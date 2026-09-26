@@ -9,6 +9,8 @@ db = client["blood_analyzer"]
 reports_collection = db["reports"]
 profiles_collection = db["profiles"]
 support_requests_collection = db["support_requests"]
+chat_messages_collection = db["chat_messages"]
+
 
 
 

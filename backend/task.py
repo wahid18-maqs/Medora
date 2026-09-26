@@ -1,7 +1,8 @@
 ## Importing libraries and files
 from crewai import Task
-from agents import doctor, verifier, nutritionist, exercise_specialist
+from agents import doctor, verifier, nutritionist, exercise_specialist, qa_agent
 from tools import search_tool, blood_test_tool,nutrition_tool, exercise_tool
+
 
 ## Creating a task to help solve user's query
 help_patients = Task(
@@ -71,5 +72,21 @@ If the document is invalid or lacks required data, report it clearly.",
 
     agent=verifier,
     tools=[blood_test_tool],
+    async_execution=False
+)
+
+qa_task = Task(
+    description="Answer the user's question about their blood test report.\n\
+Report Text:\n{report_text}\n\n\
+Conversation History:\n{conversation_history}\n\n\
+User Question:\n{question}\n\n\
+Rules:\n\
+1. Answer using ONLY information explicitly present in the Report Text or Conversation History.\n\
+2. Do NOT fabricate numbers, findings, or diagnoses not present in the report.\n\
+3. If the question cannot be answered from the report, state clearly: 'The uploaded report does not contain this information.'",
+
+    expected_output="A direct, accurate answer to the user's question based strictly on the provided report and history.",
+    agent=qa_agent,
+    input_variables=["report_text", "conversation_history", "question"],
     async_execution=False
 )

@@ -51,6 +51,15 @@ export interface AnalysisResult {
   markers: Marker[];
 }
 
+export interface ChatMessage {
+  id?: string;
+  report_id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+
 export interface MedicalCondition {
   id?: string;
   name: string;

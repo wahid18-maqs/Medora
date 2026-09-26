@@ -1,9 +1,12 @@
 "use client";
+
 import { X } from "lucide-react";
+import * as Tabs from "@radix-ui/react-tabs";
 import AgentSummaryGrid from "./AgentSummaryGrid";
 import DetailedBreakdownTable from "./DetailedBreakdownTable";
 import RecommendationTabs from "./RecommendationTabs";
 import ActionFooter from "./ActionFooter";
+import ReportChat from "./ReportChat";
 import type { AnalysisResult } from "@/lib/types";
 
 export default function AnalysisDrawer({
@@ -32,10 +35,43 @@ export default function AnalysisDrawer({
         {result.date} | Source: {result.source}
       </p>
 
+      {/* 1. Agent Summary Grid (Unchanged position) */}
       <AgentSummaryGrid agents={result.agents} />
-      <DetailedBreakdownTable markers={result.markers} />
+
+      {/* 2. New Tab Pair: Detailed Breakdown | Q&A Chat */}
+      <div className="mb-6">
+        <Tabs.Root defaultValue="breakdown">
+          <Tabs.List className="flex gap-4 border-b border-slate-100 mb-4">
+            <Tabs.Trigger
+              value="breakdown"
+              className="text-sm text-slate-500 pb-2 border-b-2 border-transparent data-[state=active]:border-primary-dark data-[state=active]:text-primary-dark cursor-pointer font-medium"
+            >
+              Detailed Breakdown
+            </Tabs.Trigger>
+            <Tabs.Trigger
+              value="chat"
+              className="text-sm text-slate-500 pb-2 border-b-2 border-transparent data-[state=active]:border-primary-dark data-[state=active]:text-primary-dark cursor-pointer font-medium"
+            >
+              Q&A Chat
+            </Tabs.Trigger>
+          </Tabs.List>
+
+          <Tabs.Content value="breakdown">
+            <DetailedBreakdownTable markers={result.markers} />
+          </Tabs.Content>
+
+          <Tabs.Content value="chat">
+            <ReportChat reportId={result.id} />
+          </Tabs.Content>
+        </Tabs.Root>
+      </div>
+
+      {/* 3. Existing Tab Pair: RecommendationTabs (Unchanged position & internal logic) */}
       <RecommendationTabs agents={result.agents} />
+
+      {/* 4. Action Footer (Unchanged position) */}
       <ActionFooter />
     </aside>
   );
 }
+

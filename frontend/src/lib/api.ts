@@ -78,6 +78,30 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
+  getChatHistory: (reportId: string) =>
+    request<{ report_id: string; messages: import("./types").ChatMessage[] }>(`/reports/${encodeURIComponent(reportId)}/chat`),
+  getReportChat: (reportId: string) =>
+    request<{ report_id: string; messages: import("./types").ChatMessage[] }>(`/reports/${encodeURIComponent(reportId)}/chat`),
+  sendChatMessage: (reportId: string, message: string) =>
+    request<{ report_id: string; user_message: string; reply: string; timestamp: string }>(
+      `/reports/${encodeURIComponent(reportId)}/chat`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      }
+    ),
+  sendReportChatMessage: (reportId: string, message: string) =>
+    request<{ reply: string }>(
+      `/reports/${encodeURIComponent(reportId)}/chat`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      }
+    ),
+
+
   analyze: (file: File, query: string) => {
     const form = new FormData();
     form.append("file", file);

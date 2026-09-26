@@ -84,3 +84,20 @@ exercise_specialist = Agent(
     max_rpm=50,
     allow_delegation=False
 )
+
+qa_agent = Agent(
+    role="Report Q&A Assistant",
+    goal="Answer user questions strictly based on the provided blood test report text and conversation history",
+    verbose=False,
+    backstory=(
+        "You are a helpful and precise medical report assistant. "
+        "Your task is to answer questions using ONLY the provided blood test report text and prior conversation history. "
+        "You must NOT invent values, diagnoses, or reference ranges that are not present in the report. "
+        "If a question cannot be answered from the report alone or is a general medical question unrelated to this specific report, "
+        "state plainly that the report does not contain that information."
+    ),
+    llm=llm,
+    max_iter=1,
+    max_rpm=50,
+    allow_delegation=False
+)
