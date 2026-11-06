@@ -1,16 +1,17 @@
-"use client";
-import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import type { Metadata } from "next";
+import DashboardAuthGuard from "@/components/layout/DashboardAuthGuard";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+export const metadata: Metadata = {
+  title: {
+    default: "Dashboard",
+    template: "%s | Medora",
+  },
+};
 
-  useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-  }, [loading, user, router]);
-
-  if (loading || !user) return null;
-  return <>{children}</>;
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <DashboardAuthGuard>{children}</DashboardAuthGuard>;
 }

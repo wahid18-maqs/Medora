@@ -1,24 +1,48 @@
-## Importing libraries and files
 import os
 from dotenv import load_dotenv
 load_dotenv()
+
+try:
+    import crewai.llms.cache
+    crewai.llms.cache.mark_cache_breakpoint = lambda m: m
+except Exception:
+    pass
+
 from crewai import Agent, LLM
 from tools import blood_test_tool, nutrition_tool, exercise_tool, search_tool
 
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
-# LLM configuration using Groq LLM
-llm = LLM(
+gemini_llm = LLM(
+    model="gemini/gemini-2.5-flash",
+    api_key=GOOGLE_API_KEY,
+    temperature=0.4
+) if GOOGLE_API_KEY else None
+
+# Fallback Groq LLM
+groq_fallback_llm = LLM(
     model="groq/openai/gpt-oss-120b",
+    api_key=GROQ_API_KEY,
     temperature=0.7
-)
+) if GROQ_API_KEY else None
+
+llm = gemini_llm if gemini_llm else groq_fallback_llm
+
+def set_agents_llm(target_llm):
+    """Switch LLM across all active agents dynamically."""
+    if not target_llm:
+        return
+    for agent in [doctor, verifier, nutritionist, exercise_specialist, qa_agent]:
+        agent.llm = target_llm
+
 
 # Creating an Experienced Doctor agent
 doctor = Agent(
     role="Senior Experienced Doctor",
     goal="Analyze blood test reports and provide accurate medical insights for: {query}",
     verbose=False,
-    memory=True,
+    memory=False,
     backstory=(
         "You are an experienced medical professional with expertise in interpreting blood test results. "
         "You provide evidence-based medical insights and recommendations based on laboratory findings. "
@@ -29,7 +53,7 @@ doctor = Agent(
     llm=llm,
     max_iter=1,
     max_rpm=50,
-    allow_delegation=True
+    allow_delegation=False
 )
 
 # Creating a verifier agent
@@ -37,7 +61,7 @@ verifier = Agent(
     role="Blood Report Verifier",
     goal="Verify the authenticity and completeness of blood test reports",
     verbose=False,
-    memory=True,
+    memory=False,
     backstory=(
         "You are a medical records specialist with expertise in validating blood test reports. "
         "You ensure that uploaded documents contain proper medical data, correct formatting, "
@@ -48,7 +72,7 @@ verifier = Agent(
     llm=llm,
     max_iter=1,
     max_rpm=50,
-    allow_delegation=True
+    allow_delegation=False
 )
 
 nutritionist = Agent(
@@ -65,7 +89,7 @@ nutritionist = Agent(
     llm=llm,
     max_iter=1,
     max_rpm=50,
-    allow_delegation=True
+    allow_delegation=False
 )
 
 exercise_specialist = Agent(

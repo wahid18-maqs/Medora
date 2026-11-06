@@ -10,11 +10,11 @@ export default function RecentActivityTable({
   const itemList = Array.isArray(items) ? items : items?.items ?? [];
 
   return (
-    <section className="bg-card rounded-xl shadow-sm p-6 border border-slate-100">
+    <section className="bg-card rounded-xl shadow-sm p-6 border border-border">
       <h3 className="font-semibold text-primary-dark mb-4">Recent Activity</h3>
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-left text-slate-400 border-b border-slate-100">
+          <tr className="text-left text-muted-foreground border-b border-border">
             <th className="font-medium py-2">Date</th>
             <th className="font-medium py-2">Report Type</th>
             <th className="font-medium py-2">Source</th>
@@ -24,7 +24,7 @@ export default function RecentActivityTable({
         <tbody>
           {itemList.length === 0 && (
             <tr>
-              <td colSpan={4} className="py-6 text-center text-slate-400">
+              <td colSpan={4} className="py-6 text-center text-muted-foreground">
                 No reports analyzed yet.
               </td>
             </tr>
@@ -47,15 +47,15 @@ export default function RecentActivityTable({
                   markers: item.markers || [],
                 })
               }
-              className="border-b border-slate-50 cursor-pointer hover:bg-slate-50 transition-colors"
+              className="border-b border-border/60 cursor-pointer hover:bg-muted/50 transition-colors"
             >
               <td className="py-3">
                 {isNaN(new Date(item.timestamp).getTime())
                   ? item.timestamp
                   : new Date(item.timestamp).toLocaleDateString()}
               </td>
-              <td className="py-3 font-medium text-slate-700">{item.report_type || "Routine"}</td>
-              <td className="py-3 text-slate-500">{item.file}</td>
+              <td className="py-3 font-medium text-foreground">{item.report_type || "Routine"}</td>
+              <td className="py-3 text-muted-foreground">{item.file}</td>
               <td className="py-3">
                 <span className="bg-medical-bg text-medical-text text-xs font-medium px-3 py-1 rounded-full">
                   {item.status || "Completed"}

@@ -31,12 +31,12 @@ export default function BasicVitalsCard({
   ];
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
+    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-primary-dark">Basic Vitals</h3>
         <button
           onClick={() => setIsEditing(true)}
-          className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-primary-dark hover:bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary-dark hover:bg-muted px-2.5 py-1.5 rounded-lg border border-border transition-colors cursor-pointer"
         >
           <Edit2 size={13} />
           Edit Info
@@ -44,28 +44,28 @@ export default function BasicVitalsCard({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-          <span className="block text-xs text-slate-400">Weight & Height</span>
-          <span className="text-sm font-semibold text-slate-700">
+        <div className="bg-muted p-3 rounded-lg border border-border">
+          <span className="block text-xs text-muted-foreground">Weight & Height</span>
+          <span className="text-sm font-semibold text-foreground">
             {vitals.weight} kg / {vitals.height} cm
           </span>
         </div>
 
-        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-          <span className="block text-xs text-slate-400">Computed BMI</span>
+        <div className="bg-muted p-3 rounded-lg border border-border">
+          <span className="block text-xs text-muted-foreground">Computed BMI</span>
           <span className="text-sm font-semibold text-primary-dark">{computedBMI} kg/m²</span>
         </div>
 
-        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-          <span className="block text-xs text-slate-400">Blood Pressure</span>
-          <span className="text-sm font-semibold text-slate-700">
+        <div className="bg-muted p-3 rounded-lg border border-border">
+          <span className="block text-xs text-muted-foreground">Blood Pressure</span>
+          <span className="text-sm font-semibold text-foreground">
             {vitals.systolicBP}/{vitals.diastolicBP} mmHg
           </span>
         </div>
 
-        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-          <span className="block text-xs text-slate-400">Blood Type & Heart Rate</span>
-          <span className="text-sm font-semibold text-slate-700">
+        <div className="bg-muted p-3 rounded-lg border border-border">
+          <span className="block text-xs text-muted-foreground">Blood Type & Heart Rate</span>
+          <span className="text-sm font-semibold text-foreground">
             {vitals.bloodType} | {vitals.restingHeartRate} bpm
           </span>
         </div>

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Response
-from fastapi.responses import Response
 import json, datetime
 from profile import get_current_user_email
+from db import profiles_collection, reports_collection
 from store import IN_MEMORY_REPORTS, IN_MEMORY_PROFILES
 
 router = APIRouter()
@@ -24,12 +24,10 @@ def export_user_data(user_email: str = Depends(get_current_user_email)):
     if not profile_data:
         profile_data = IN_MEMORY_PROFILES.get(user_email)
 
-    # Fetch user reports (strip Mongo _id)
+    # Fetch only this user's reports (strip Mongo _id)
     reports_data = []
     try:
-        # Match documents matching user_email or all if un-partitioned legacy
-        query = {"$or": [{"user_email": user_email}, {"user_email": {"$exists": False}}]}
-        r_docs = list(reports_collection.find(query, {"_id": 0}))
+        r_docs = list(reports_collection.find({"user_email": user_email}, {"_id": 0}))
         for r in r_docs:
             reports_data.append({
                 "analysis_id": r.get("analysis_id"),
@@ -48,6 +46,8 @@ def export_user_data(user_email: str = Depends(get_current_user_email)):
 
     if not reports_data:
         for r in IN_MEMORY_REPORTS:
+            if r.get("user_email") != user_email:
+                continue
             reports_data.append({
                 "analysis_id": r.get("analysis_id"),
                 "report_type": r.get("report_type"),
@@ -91,13 +91,13 @@ def delete_account(response: Response, user_email: str = Depends(get_current_use
     if user_email in IN_MEMORY_PROFILES:
         del IN_MEMORY_PROFILES[user_email]
 
-    # 2. Delete reports from MongoDB
+    # 2. Delete only this user's reports from MongoDB
     try:
-        reports_collection.delete_many({"$or": [{"user_email": user_email}, {"user_email": {"$exists": False}}]})
+        reports_collection.delete_many({"user_email": user_email})
     except Exception as err:
         errors.append(f"Reports delete error: {str(err)}")
 
-    IN_MEMORY_REPORTS.clear()
+    IN_MEMORY_REPORTS[:] = [r for r in IN_MEMORY_REPORTS if r.get("user_email") != user_email]
 
     if errors:
         raise HTTPException(

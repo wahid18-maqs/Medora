@@ -46,6 +46,12 @@ async function requestBlob(path: string, init?: RequestInit): Promise<Blob> {
 }
 
 export const api = {
+  signup: (name: string, email: string, password: string) =>
+    request<{ name: string; email: string }>("/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    }),
   login: (email: string, password: string) =>
     request<{ name: string; email: string }>("/auth/login", {
       method: "POST",
@@ -78,6 +84,8 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
+  getReport: (reportId: string) =>
+    request<HistoryItem>(`/reports/${encodeURIComponent(reportId)}`),
   getChatHistory: (reportId: string) =>
     request<{ report_id: string; messages: import("./types").ChatMessage[] }>(`/reports/${encodeURIComponent(reportId)}/chat`),
   getReportChat: (reportId: string) =>

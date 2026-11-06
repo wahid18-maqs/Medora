@@ -10,6 +10,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
+import type { TooltipContentProps } from "recharts";
 import { Activity } from "lucide-react";
 import type { HistoryItem } from "@/lib/types";
 
@@ -59,13 +60,13 @@ export default function BiomarkerTrendsCard({ history }: { history: HistoryItem[
   const hasEnoughData = chartData.length >= 2;
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between col-span-1 lg:col-span-3">
+    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between col-span-1 lg:col-span-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-2">
           <Activity className="text-primary-dark" size={20} />
           <div>
             <h3 className="font-semibold text-primary-dark">Biomarker Trends</h3>
-            <p className="text-xs text-slate-500">Historical trend derived from analyzed blood test reports</p>
+            <p className="text-xs text-muted-foreground">Historical trend derived from analyzed blood test reports</p>
           </div>
         </div>
 
@@ -73,7 +74,7 @@ export default function BiomarkerTrendsCard({ history }: { history: HistoryItem[
           <select
             value={selectedMarker}
             onChange={(e) => setSelectedMarker(e.target.value)}
-            className="bg-slate-50 border border-slate-200 text-xs rounded-lg px-3 py-1.5 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+            className="bg-muted border border-border text-xs rounded-lg px-3 py-1.5 font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
           >
             {availableMarkers.map((m) => (
               <option key={m} value={m}>
@@ -85,11 +86,11 @@ export default function BiomarkerTrendsCard({ history }: { history: HistoryItem[
       </div>
 
       {!hasEnoughData ? (
-        <div className="h-48 flex flex-col items-center justify-center bg-slate-50 rounded-lg border border-dashed border-slate-200 p-6 text-center">
-          <p className="text-sm font-medium text-slate-600 mb-1">
+        <div className="h-48 flex flex-col items-center justify-center bg-muted rounded-lg border border-dashed border-border p-6 text-center">
+          <p className="text-sm font-medium text-foreground mb-1">
             Insufficient Historical Data
           </p>
-          <p className="text-xs text-slate-400 max-w-sm">
+          <p className="text-xs text-muted-foreground max-w-sm">
             At least 2 analyzed reports containing {selectedMarker} are required to display trend visualization.
           </p>
         </div>
@@ -101,11 +102,11 @@ export default function BiomarkerTrendsCard({ history }: { history: HistoryItem[
               <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#64748B" }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#64748B" }} domain={["auto", "auto"]} />
               <Tooltip
-                content={({ active, payload }: { active?: boolean; payload?: any[] }) => {
+                content={({ active, payload }: TooltipContentProps) => {
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
-                      <div className="bg-primary-dark text-white text-xs px-3 py-2 rounded-lg shadow-md">
+                      <div className="bg-primary text-primary-foreground text-xs px-3 py-2 rounded-lg shadow-md">
                         <p className="font-medium">{data.date}</p>
                         <p className="text-emerald-400 font-semibold">
                           {data.value} {data.unit}

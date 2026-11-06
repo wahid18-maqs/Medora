@@ -28,38 +28,38 @@ export default function UserProfileSummaryCard({
     .toUpperCase();
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
+    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-primary-dark text-white flex items-center justify-center font-bold text-lg shadow-sm">
+          <div className="w-14 h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg shadow-sm">
             {initials || <User size={24} />}
           </div>
           <div>
             <h2 className="text-lg font-semibold text-primary-dark">{profile.name}</h2>
-            <p className="text-xs text-slate-500">Patient Profile</p>
+            <p className="text-xs text-muted-foreground">Patient Profile</p>
           </div>
         </div>
         <button
           onClick={() => setIsEditing(true)}
-          className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-primary-dark hover:bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary-dark hover:bg-muted px-2.5 py-1.5 rounded-lg border border-border transition-colors cursor-pointer"
         >
           <Edit2 size={13} />
           Edit Info
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100 text-center">
+      <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border text-center">
         <div>
-          <span className="block text-xs text-slate-400">Age</span>
-          <span className="font-semibold text-slate-700 text-sm">{profile.age}</span>
+          <span className="block text-xs text-muted-foreground">Age</span>
+          <span className="font-semibold text-foreground text-sm">{profile.age}</span>
         </div>
         <div>
-          <span className="block text-xs text-slate-400">DOB</span>
-          <span className="font-semibold text-slate-700 text-sm">{profile.dob}</span>
+          <span className="block text-xs text-muted-foreground">DOB</span>
+          <span className="font-semibold text-foreground text-sm">{profile.dob}</span>
         </div>
         <div>
-          <span className="block text-xs text-slate-400">Gender</span>
-          <span className="font-semibold text-slate-700 text-sm">{profile.gender}</span>
+          <span className="block text-xs text-muted-foreground">Gender</span>
+          <span className="font-semibold text-foreground text-sm">{profile.gender}</span>
         </div>
       </div>
 

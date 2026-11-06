@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, HelpCircle } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface FAQItem {
   id: string;
@@ -32,7 +33,7 @@ const FAQS: FAQItem[] = [
     answer: (
       <span>
         Yes, you have full control over your health records. You can export your data or permanently delete your account anytime on the{" "}
-        <Link href="/dashboard/settings" className="text-primary-dark font-medium underline hover:text-primary">
+        <Link href="/dashboard/settings" className="font-medium text-primary underline hover:text-primary/80">
           Settings page
         </Link>
         .
@@ -50,46 +51,55 @@ export default function FAQCard() {
   const [openId, setOpenId] = useState<string | null>("formats");
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <HelpCircle className="text-primary-dark" size={20} />
-          <h2 className="text-lg font-semibold text-primary-dark">Frequently Asked Questions</h2>
-        </div>
-        <p className="text-xs text-slate-500 mb-6">
-          Quick answers to common questions regarding reports, privacy, and security
+    <section className="py-6 first:pt-0">
+      <div className="mb-5">
+        <h2 className="text-base font-semibold text-foreground">Frequently Asked Questions</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Quick answers about reports, privacy, and security.
         </p>
+      </div>
 
-        <div className="space-y-3">
-          {FAQS.map((faq) => {
-            const isOpen = openId === faq.id;
-            return (
-              <div
-                key={faq.id}
-                className="border border-slate-200/80 rounded-lg overflow-hidden transition-colors"
+      <div className="divide-y divide-border">
+        {FAQS.map((faq) => {
+          const isOpen = openId === faq.id;
+          const contentId = `faq-${faq.id}`;
+
+          return (
+            <div key={faq.id}>
+              <button
+                type="button"
+                onClick={() => setOpenId(isOpen ? null : faq.id)}
+                aria-expanded={isOpen}
+                aria-controls={contentId}
+                className="flex w-full cursor-pointer items-center justify-between gap-4 py-4 text-left text-sm font-medium text-foreground transition-colors hover:text-primary"
               >
-                <button
-                  onClick={() => setOpenId(isOpen ? null : faq.id)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-800 bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer"
-                >
-                  <span>{faq.question}</span>
-                  <ChevronDown
-                    size={16}
-                    className={`text-slate-400 transition-transform duration-200 shrink-0 ${
-                      isOpen ? "rotate-180 text-primary-dark" : ""
-                    }`}
-                  />
-                </button>
-                {isOpen && (
-                  <div className="px-4 py-3 text-xs text-slate-600 leading-relaxed bg-card border-t border-slate-100">
+                <span>{faq.question}</span>
+                <ChevronDown
+                  size={16}
+                  className={cn(
+                    "shrink-0 text-muted-foreground transition-transform duration-300",
+                    isOpen && "rotate-180 text-primary"
+                  )}
+                />
+              </button>
+
+              <div
+                id={contentId}
+                className={cn(
+                  "grid transition-all duration-300 ease-out",
+                  isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                )}
+              >
+                <div className="overflow-hidden">
+                  <div className="pb-4 pr-8 text-sm leading-relaxed text-muted-foreground">
                     {faq.answer}
                   </div>
-                )}
+                </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
-    </div>
+    </section>
   );
 }

@@ -1,5 +1,6 @@
 import { Stethoscope, ShieldCheck, Apple, Dumbbell } from "lucide-react";
 import type { AnalysisResult } from "@/lib/types";
+import { stripMarkdown } from "@/lib/utils";
 
 const CARDS = [
   { key: "medical", label: "Medical", sub: "Doctor Agent", icon: Stethoscope, bg: "bg-medical-bg", text: "text-medical-text" },
@@ -19,8 +20,8 @@ export default function AgentSummaryGrid({ agents }: { agents: AnalysisResult["a
               <Icon size={14} /> {label}
             </div>
             <p className={`text-[11px] ${text} opacity-70 mb-1`}>{sub}</p>
-            <p className="text-xs text-slate-600 leading-snug line-clamp-3">
-              {agents[key as keyof AnalysisResult["agents"]] || "Pending analysis."}
+            <p className="text-xs text-foreground leading-snug line-clamp-3">
+              {stripMarkdown(agents[key as keyof AnalysisResult["agents"]]) || "Pending analysis."}
             </p>
           </div>
         ))}

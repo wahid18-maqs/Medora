@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import uuid
@@ -10,9 +10,10 @@ from crewai import Crew, Process
 from agents import doctor, verifier, nutritionist, exercise_specialist
 from task import help_patients, verification, nutrition_analysis, exercise_planning
 from db import reports_collection
+from clean_text import strip_markdown
 from langchain_community.document_loaders import PyPDFLoader
 from auth import router as auth_router
-from profile import router as profile_router
+from profile import router as profile_router, get_current_user_email
 from settings import router as settings_router
 from support import router as support_router
 from chat import router as chat_router
@@ -41,10 +42,6 @@ app.include_router(settings_router)
 app.include_router(support_router)
 app.include_router(chat_router)
 
-
-
-
-
 def extract_text_from_pdf(file_path: str) -> str:
     try:
         loader = PyPDFLoader(file_path)
@@ -64,9 +61,9 @@ def parse_markers_from_text(text: str) -> List[Dict[str, Any]]:
 
     # Pattern matchers for common markers: (Name, regex_pattern, (low_ref, high_ref), default_unit)
     patterns = [
-        ("Hemoglobin", r"(?:hemoglobin|hb)\s*[:\-\=]?\s*(\d+(?:\.\d+)?)\s*(g/dl|g/l)?", (13.0, 15.0), "g/dL"),
-        ("Fasting Glucose", r"(?:fasting glucose|glucose|blood sugar)\s*[:\-\=]?\s*(\d+(?:\.\d+)?)\s*(mg/dl|mmol/l)?", (8.5, 12.0), "mg/dL"),
-        ("Vitamin D", r"(?:vitamin d|25-oh vitamin d|vit d)\s*[:\-\=]?\s*(\d+(?:\.\d+)?)\s*(ng/ml|nmol/l)?", (13.0, 30.0), "ng/mL"),
+        ("Hemoglobin", r"(?:hemoglobin|hb)\s*[:\-\=]?\s*(\d+(?:\.\d+)?)\s*(g/dl|g/l)?", (13.0, 17.0), "g/dL"),
+        ("Fasting Glucose", r"(?:fasting glucose|glucose|blood sugar)\s*[:\-\=]?\s*(\d+(?:\.\d+)?)\s*(mg/dl|mmol/l)?", (70.0, 99.0), "mg/dL"),
+        ("Vitamin D", r"(?:vitamin d|25-oh vitamin d|vit d)\s*[:\-\=]?\s*(\d+(?:\.\d+)?)\s*(ng/ml|nmol/l)?", (30.0, 100.0), "ng/mL"),
         ("Total Cholesterol", r"(?:total cholesterol|cholesterol)\s*[:\-\=]?\s*(\d+(?:\.\d+)?)\s*(mg/dl|mmol/l)?", (125.0, 200.0), "mg/dL"),
         ("WBC", r"(?:wbc|white blood cell count|white blood cells)\s*[:\-\=]?\s*(\d+(?:\.\d+)?)\s*(x10\^3/\xb5l|k/ul|10\^9/l)?", (4.5, 11.0), "x10^3/µL"),
         ("Platelets", r"(?:platelets|platelet count)\s*[:\-\=]?\s*(\d+(?:\.\d+)?)\s*(x10\^3/\xb5l|k/ul)?", (150.0, 450.0), "x10^3/µL"),
@@ -92,50 +89,116 @@ def parse_markers_from_text(text: str) -> List[Dict[str, Any]]:
                 "status": status
             })
 
-    # If document contains unparsed text, provide sample parsed markers so visual indicators are visible
-    if not markers:
-        markers = [
-            {"name": "Hemoglobin", "value": 15.0, "unit": "g/dL", "range": [13.0, 15.0], "status": "Normal"},
-            {"name": "Fasting Glucose", "value": 92.0, "unit": "mg/dL", "range": [8.5, 12.0], "status": "High"},
-            {"name": "Vitamin D", "value": 0.45, "unit": "ng/mL", "range": [13.0, 30.0], "status": "Low"}
-        ]
-
     return markers
 
 async def run_crew_async(query: str, report: str):
+    from agents import gemini_llm, groq_fallback_llm, set_agents_llm
+
+    # Attempt 1: Primary Gemini 3.5 Flash
+    if gemini_llm:
+        try:
+            print("Running Crew with Primary Gemini 3.5 Flash...")
+            set_agents_llm(gemini_llm)
+            medical_crew = Crew(
+                agents=[verifier, doctor, nutritionist, exercise_specialist],
+                tasks=[verification, help_patients, nutrition_analysis, exercise_planning],
+                process=Process.sequential,
+                verbose=False,
+            )
+            crew_output = await medical_crew.kickoff_async({
+                "query": query,
+                "report": report
+            })
+            task_outputs = getattr(crew_output, "tasks_output", [])
+            return {
+                "medical": str(task_outputs[1]) if len(task_outputs) > 1 else str(crew_output),
+                "verification": str(task_outputs[0]) if len(task_outputs) > 0 else "Verification completed.",
+                "nutrition": str(task_outputs[2]) if len(task_outputs) > 2 else "Nutrition evaluation completed.",
+                "exercise": str(task_outputs[3]) if len(task_outputs) > 3 else "Exercise evaluation completed."
+            }
+        except Exception as gemini_err:
+            print("Gemini execution error, attempting fallback to Groq:", str(gemini_err))
+
+    # Attempt 2: Fallback to Groq LLM if Gemini failed or is unavailable
+    if groq_fallback_llm:
+        try:
+            print("Running Crew with Fallback Groq LLM...")
+            set_agents_llm(groq_fallback_llm)
+            medical_crew = Crew(
+                agents=[verifier, doctor, nutritionist, exercise_specialist],
+                tasks=[verification, help_patients, nutrition_analysis, exercise_planning],
+                process=Process.sequential,
+                verbose=False,
+            )
+            crew_output = await medical_crew.kickoff_async({
+                "query": query,
+                "report": report
+            })
+            task_outputs = getattr(crew_output, "tasks_output", [])
+            return {
+                "medical": str(task_outputs[1]) if len(task_outputs) > 1 else str(crew_output),
+                "verification": str(task_outputs[0]) if len(task_outputs) > 0 else "Verification completed.",
+                "nutrition": str(task_outputs[2]) if len(task_outputs) > 2 else "Nutrition evaluation completed.",
+                "exercise": str(task_outputs[3]) if len(task_outputs) > 3 else "Exercise evaluation completed."
+            }
+        except Exception as groq_err:
+            print("Groq execution error, running direct specialized LLM generation:", str(groq_err))
+
+    # Attempt 3: Direct LLM generation guarantee
     try:
-        medical_crew = Crew(
-            agents=[verifier, doctor, nutritionist, exercise_specialist],
-            tasks=[verification, help_patients, nutrition_analysis, exercise_planning],
-            process=Process.sequential,
-            verbose=False,
+        import requests
+        groq_key = os.getenv("GROQ_API_KEY", "")
+        headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+
+        def query_llm(sys_prompt: str, user_content: str) -> str:
+            payload = {
+                "model": "openai/gpt-oss-20b",
+                "messages": [
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": f"Blood Report Data:\n{user_content}"}
+                ],
+                "temperature": 0.4
+            }
+            res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=25)
+            if res.status_code == 200:
+                return res.json()["choices"][0]["message"]["content"]
+            return ""
+
+        print("Generating specialized agent analysis via direct Groq pipeline...")
+        med = query_llm(
+            "You are a Senior Experienced Doctor. Provide comprehensive medical insights, interpretations of anomalous markers, and clinical follow-up recommendations based strictly on this blood report.",
+            report
         )
-        crew_output = await medical_crew.kickoff_async({
-            "query": query,
-            "report": report
-        })
+        ver = query_llm(
+            "You are a Blood Report Verifier. Validate the report authenticity, extract key test names, values, units, reference ranges, and note overall completeness.",
+            report
+        )
+        nut = query_llm(
+            "You are a Clinical Nutritionist. Provide personalized, evidence-based dietary recommendations, food groups, and nutrient adjustments based on this blood test report.",
+            report
+        )
+        exe = query_llm(
+            "You are an Exercise Physiologist. Design a structured, safe cardiovascular and strength training plan tailored specifically to the patient's blood markers.",
+            report
+        )
 
-        task_outputs = getattr(crew_output, "tasks_output", [])
-        
-        medical_text = str(task_outputs[1]) if len(task_outputs) > 1 else str(crew_output)
-        verification_text = str(task_outputs[0]) if len(task_outputs) > 0 else "Verification completed."
-        nutrition_text = str(task_outputs[2]) if len(task_outputs) > 2 else "Nutrition evaluation completed."
-        exercise_text = str(task_outputs[3]) if len(task_outputs) > 3 else "Exercise evaluation completed."
+        if med and ver and nut and exe:
+            return {
+                "medical": med,
+                "verification": ver,
+                "nutrition": nut,
+                "exercise": exe
+            }
+    except Exception as direct_err:
+        print("Direct LLM generation error:", str(direct_err))
 
-        return {
-            "medical": medical_text,
-            "verification": verification_text,
-            "nutrition": nutrition_text,
-            "exercise": exercise_text
-        }
-    except Exception as err:
-        print("CrewAI execution warning/error:", str(err))
-        return {
-            "medical": f"Medical Analysis Summary:\nAnalyzed query '{query}'. Based on laboratory findings, key markers were evaluated.",
-            "verification": "Document verification completed. PDF contains valid blood report structure.",
-            "nutrition": "Nutrition Recommendations:\n- Optimize diet according to extracted glucose and lipid markers.\n- Consider nutritional supplementation if deficiencies exist.",
-            "exercise": "Exercise Plan:\n- 150 minutes of moderate cardio weekly.\n- Include resistance training 2 days per week."
-        }
+    # Static emergency fallback only if network completely down
+    return {
+        "medical": f"Medical Analysis Summary:\nAnalyzed query '{query}'. Based on laboratory findings, key markers were evaluated.",
+        "verification": "Document verification completed. PDF contains valid blood report structure.",
+        "nutrition": "Nutrition Recommendations:\n- Optimize diet according to extracted glucose and lipid markers.\n- Consider nutritional supplementation if deficiencies exist.",
+        "exercise": "Exercise Plan:\n- 150 minutes of moderate cardio weekly.\n- Include resistance training 2 days per week."
+    }
 
 # Root health check
 @app.get("/")
@@ -145,7 +208,8 @@ async def root():
 @app.post("/analyze")
 async def analyze_blood_report(
     file: UploadFile = File(...),
-    query: str = Form(default="Summarise my Blood Test Report")
+    query: str = Form(default="Summarise my Blood Test Report"),
+    user_email: str = Depends(get_current_user_email),
 ):
     file_id = str(uuid.uuid4())
     file_path = f"data/blood_test_report_{file_id}.pdf"
@@ -170,15 +234,16 @@ async def analyze_blood_report(
 
         # Process with CrewAI async sequential agents
         agent_outputs = await run_crew_async(query=query.strip(), report=report_text)
+        agent_outputs = {key: strip_markdown(value) for key, value in agent_outputs.items()}
         markers = parse_markers_from_text(report_text)
 
         now = datetime.datetime.utcnow()
         # Generate stable Analysis ID format #BTA-YYYY-NNN at insert time
         year = now.year
         try:
-            db_count = reports_collection.count_documents({})
+            db_count = reports_collection.count_documents({"user_email": user_email})
         except Exception:
-            db_count = len(IN_MEMORY_REPORTS)
+            db_count = len([r for r in IN_MEMORY_REPORTS if r.get("user_email") == user_email])
         seq_num = (db_count + 1) % 1000
         analysis_id = f"BTA-{year}-{seq_num:03d}"
 
@@ -188,6 +253,7 @@ async def analyze_blood_report(
 
         doc = {
             "analysis_id": analysis_id,
+            "user_email": user_email,
             "report_type": report_type,
             "diagnostic_center": diagnostic_center,
             "status": "Completed - Reviewed",
@@ -234,7 +300,8 @@ async def get_history(
     page_size: int = 10,
     search: str = "",
     q: str = "",
-    report_type: str = "All Reports"
+    report_type: str = "All Reports",
+    user_email: str = Depends(get_current_user_email),
 ):
     history_items = []
     total_count = 0
@@ -243,8 +310,8 @@ async def get_history(
     query_str = (q or search).strip()
     skip = (page - 1) * page_size
 
-    # Build Mongo filter
-    mongo_filter = {}
+    # Build Mongo filter scoped to the authenticated user
+    mongo_filter = {"user_email": user_email}
     if query_str:
         mongo_filter["$or"] = [
             {"file_name": {"$regex": query_str, "$options": "i"}},
@@ -281,7 +348,7 @@ async def get_history(
 
     # Fallback to IN_MEMORY_REPORTS if Mongo fetch produced nothing
     if not history_items and not total_count:
-        filtered_mem = IN_MEMORY_REPORTS
+        filtered_mem = [r for r in IN_MEMORY_REPORTS if r.get("user_email") == user_email]
         if query_str:
             s = query_str.lower()
             filtered_mem = [

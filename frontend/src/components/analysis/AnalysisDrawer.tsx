@@ -17,21 +17,21 @@ export default function AnalysisDrawer({
   onClose: () => void;
 }) {
   return (
-    <aside className="w-[35%] min-w-[380px] bg-card border-l border-slate-100 h-screen sticky top-0 overflow-y-auto px-6 py-6 shadow-lg z-40">
+    <aside className="w-[35%] min-w-[380px] bg-card border-l border-border h-screen sticky top-0 overflow-y-auto px-6 py-6 shadow-lg z-40">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h2 className="text-lg font-semibold text-primary-dark">Analysis Result</h2>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             Analysis ID: #{result.id} | {result.date}
           </p>
         </div>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground cursor-pointer">
           <X size={18} />
         </button>
       </div>
 
       <h3 className="font-semibold text-primary-dark">{result.title}</h3>
-      <p className="text-sm text-slate-500 mb-5">
+      <p className="text-sm text-muted-foreground mb-5">
         {result.date} | Source: {result.source}
       </p>
 
@@ -41,16 +41,16 @@ export default function AnalysisDrawer({
       {/* 2. New Tab Pair: Detailed Breakdown | Q&A Chat */}
       <div className="mb-6">
         <Tabs.Root defaultValue="breakdown">
-          <Tabs.List className="flex gap-4 border-b border-slate-100 mb-4">
+          <Tabs.List className="flex gap-4 border-b border-border mb-4">
             <Tabs.Trigger
               value="breakdown"
-              className="text-sm text-slate-500 pb-2 border-b-2 border-transparent data-[state=active]:border-primary-dark data-[state=active]:text-primary-dark cursor-pointer font-medium"
+              className="text-sm text-muted-foreground pb-2 border-b-2 border-transparent data-[state=active]:border-primary-dark data-[state=active]:text-primary-dark cursor-pointer font-medium"
             >
               Detailed Breakdown
             </Tabs.Trigger>
             <Tabs.Trigger
               value="chat"
-              className="text-sm text-slate-500 pb-2 border-b-2 border-transparent data-[state=active]:border-primary-dark data-[state=active]:text-primary-dark cursor-pointer font-medium"
+              className="text-sm text-muted-foreground pb-2 border-b-2 border-transparent data-[state=active]:border-primary-dark data-[state=active]:text-primary-dark cursor-pointer font-medium"
             >
               Q&A Chat
             </Tabs.Trigger>

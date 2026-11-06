@@ -37,12 +37,12 @@ export default function MedicalHistoryCard({
     .join("\n");
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
+    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-primary-dark">Medical History</h3>
         <button
           onClick={() => setIsEditing(true)}
-          className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-primary-dark hover:bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary-dark hover:bg-muted px-2.5 py-1.5 rounded-lg border border-border transition-colors cursor-pointer"
         >
           <Edit2 size={13} />
           Edit Info
@@ -52,20 +52,20 @@ export default function MedicalHistoryCard({
       <div className="space-y-4">
         {/* Conditions Section */}
         <div>
-          <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Active / Past Conditions
           </h4>
           {profile.medicalConditions.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">No medical conditions recorded.</p>
+            <p className="text-xs text-muted-foreground italic">No medical conditions recorded.</p>
           ) : (
             <div className="space-y-1.5">
               {profile.medicalConditions.map((cond, idx) => (
                 <div
                   key={cond.id || idx}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50 px-3 py-2 rounded-lg text-xs"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between bg-muted px-3 py-2 rounded-lg text-xs"
                 >
-                  <span className="font-semibold text-slate-700">{cond.name}</span>
-                  <span className="text-slate-500">{cond.notes}</span>
+                  <span className="font-semibold text-foreground">{cond.name}</span>
+                  <span className="text-muted-foreground">{cond.notes}</span>
                 </div>
               ))}
             </div>
@@ -73,21 +73,21 @@ export default function MedicalHistoryCard({
         </div>
 
         {/* Surgical History Section */}
-        <div className="pt-3 border-t border-slate-100">
-          <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+        <div className="pt-3 border-t border-border">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Surgical History
           </h4>
           {profile.surgeries.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">No surgical history recorded.</p>
+            <p className="text-xs text-muted-foreground italic">No surgical history recorded.</p>
           ) : (
             <div className="space-y-1.5">
               {profile.surgeries.map((surg, idx) => (
                 <div
                   key={surg.id || idx}
-                  className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg text-xs"
+                  className="flex items-center justify-between bg-muted px-3 py-2 rounded-lg text-xs"
                 >
-                  <span className="font-semibold text-slate-700">{surg.procedure}</span>
-                  <span className="text-slate-400">{surg.date}</span>
+                  <span className="font-semibold text-foreground">{surg.procedure}</span>
+                  <span className="text-muted-foreground">{surg.date}</span>
                 </div>
               ))}
             </div>

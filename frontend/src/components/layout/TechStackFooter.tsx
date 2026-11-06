@@ -8,9 +8,9 @@ const STACK = [
 
 export default function TechStackFooter() {
   return (
-    <div className="flex items-center justify-around px-2 pt-4 border-t border-slate-100">
+    <div className="flex items-center justify-around px-2 pt-4 border-t border-border">
       {STACK.map(({ label, icon: Icon, color }) => (
-        <div key={label} className="flex flex-col items-center gap-1 text-[11px] text-slate-500">
+        <div key={label} className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
           <Icon size={16} className={color} />
           {label}
         </div>

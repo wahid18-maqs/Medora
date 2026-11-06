@@ -5,15 +5,10 @@ interface RangeGaugeProps {
   value: number;
   range: [number, number];
   status: "Low" | "High" | "Normal";
-  size?: number;
+  unit?: string;
 }
 
-export default function RangeGauge({
-  value,
-  range,
-  status,
-  size = 64,
-}: RangeGaugeProps) {
+export default function RangeGauge({ value, range, status, unit }: RangeGaugeProps) {
   const [minRef, maxRef] = range;
   const refSpan = maxRef - minRef || 1;
   const margin = refSpan * 0.15;
@@ -29,16 +24,21 @@ export default function RangeGauge({
   const angleDeg = normalizedVal * 180;
   const angleRad = (Math.PI * (180 - angleDeg)) / 180;
 
-  // Gauge dimensions
-  const viewBoxWidth = 100;
-  const viewBoxHeight = 55;
-  const cx = 50;
-  const cy = 48;
-  const r = 38;
-  const strokeWidth = 8;
+  // Responsive gauge dimensions (scales with the SVG viewBox)
+  const viewBoxWidth = 160;
+  const viewBoxHeight = 116;
+  const cx = 80;
+  const cy = 82;
+  const r = 64;
+  const strokeWidth = 13;
 
   // Arc path generator helper: startAngle and endAngle in degrees (180 to 0)
-  const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
+  const polarToCartesian = (
+    centerX: number,
+    centerY: number,
+    radius: number,
+    angleInDegrees: number
+  ) => {
     const rad = ((180 - angleInDegrees) * Math.PI) / 180;
     return {
       x: centerX + radius * Math.cos(rad),
@@ -46,21 +46,36 @@ export default function RangeGauge({
     };
   };
 
-  const describeArc = (x: number, y: number, radius: number, startAngle: number, endAngle: number) => {
+  const describeArc = (
+    x: number,
+    y: number,
+    radius: number,
+    startAngle: number,
+    endAngle: number
+  ) => {
     const start = polarToCartesian(x, y, radius, endAngle);
     const end = polarToCartesian(x, y, radius, startAngle);
     const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
     return [
-      "M", start.x, start.y,
-      "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
+      "M",
+      start.x,
+      start.y,
+      "A",
+      radius,
+      radius,
+      0,
+      largeArcFlag,
+      0,
+      end.x,
+      end.y,
     ].join(" ");
   };
 
   // Color mappings
   const STATUS_COLOR = {
-    Low: "#2563EB",     // Blue
-    Normal: "#137333",  // Green
-    High: "#C5221F",    // Red
+    Low: "var(--nutrition-text)",
+    Normal: "var(--medical-text)",
+    High: "var(--exercise-text)",
   };
 
   // Segment angles based on reference range boundaries
@@ -68,25 +83,29 @@ export default function RangeGauge({
   const highAngleStart = ((maxRef - domainMin) / domainSpan) * 180;
 
   // Needle tip coordinates
-  const needleLength = r - 6;
+  const needleLength = r - 9;
   const needleTipX = cx + needleLength * Math.cos(angleRad);
   const needleTipY = cy - needleLength * Math.sin(angleRad);
 
+  const displayValue = `${value}${unit ? ` ${unit}` : ""}`;
+
   return (
     <div
-      className="inline-flex flex-col items-center justify-center select-none"
-      style={{ width: `${size * 1.6}px`, height: `${size}px` }}
+      className="w-full max-w-[160px] select-none"
       title={`Value: ${value} (Ref: ${minRef} - ${maxRef})`}
     >
       <svg
         viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-        className="w-full h-full overflow-visible"
+        className="h-auto w-full overflow-visible"
+        role="img"
+        aria-label={`${displayValue}, reference range ${minRef} to ${maxRef}, status ${status}`}
       >
         {/* Background track */}
         <path
           d={describeArc(cx, cy, r, 0, 180)}
           fill="none"
-          stroke="#E2E8F0"
+          stroke="currentColor"
+          className="text-muted"
           strokeWidth={strokeWidth}
           strokeLinecap="round"
         />
@@ -97,6 +116,7 @@ export default function RangeGauge({
           fill="none"
           stroke="#93C5FD"
           strokeWidth={strokeWidth}
+          strokeLinecap="round"
         />
 
         {/* Normal segment (in-range center) */}
@@ -105,6 +125,7 @@ export default function RangeGauge({
           fill="none"
           stroke="#86EFAC"
           strokeWidth={strokeWidth}
+          strokeLinecap="round"
         />
 
         {/* High segment (out-of-range right) */}
@@ -113,6 +134,7 @@ export default function RangeGauge({
           fill="none"
           stroke="#FCA5A5"
           strokeWidth={strokeWidth}
+          strokeLinecap="round"
         />
 
         {/* Needle Line */}
@@ -122,13 +144,48 @@ export default function RangeGauge({
           x2={needleTipX}
           y2={needleTipY}
           stroke={STATUS_COLOR[status] || "#475569"}
-          strokeWidth="3.5"
+          strokeWidth="5"
           strokeLinecap="round"
         />
 
         {/* Pivot Center Dot */}
-        <circle cx={cx} cy={cy} r="4.5" fill={STATUS_COLOR[status] || "#475569"} />
-        <circle cx={cx} cy={cy} r="2" fill="#FFFFFF" />
+        <circle cx={cx} cy={cy} r="7.5" fill={STATUS_COLOR[status] || "#475569"} />
+        <circle cx={cx} cy={cy} r="2.5" fill="#FFFFFF" />
+
+        {/* Reference range end labels */}
+        <text
+          x={cx - r}
+          y={96}
+          textAnchor="middle"
+          fontSize={8.5}
+          fill="currentColor"
+          className="text-muted-foreground"
+        >
+          {minRef}
+        </text>
+        <text
+          x={cx + r}
+          y={96}
+          textAnchor="middle"
+          fontSize={8.5}
+          fill="currentColor"
+          className="text-muted-foreground"
+        >
+          {maxRef}
+        </text>
+
+        {/* Measured value */}
+        <text
+          x={cx}
+          y={112}
+          textAnchor="middle"
+          fontSize={15}
+          fontWeight={700}
+          fill="currentColor"
+          className="text-foreground"
+        >
+          {displayValue}
+        </text>
       </svg>
     </div>
   );

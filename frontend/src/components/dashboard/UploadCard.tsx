@@ -40,7 +40,7 @@ export default function UploadCard({ onAnalyzed }: { onAnalyzed: (r: AnalysisRes
   }
 
   return (
-    <section className="bg-card rounded-xl shadow-sm p-6 mb-8 border border-slate-100">
+    <section className="bg-card rounded-xl shadow-sm p-6 mb-8 border border-border">
       <h3 className="font-semibold text-primary-dark mb-4">Analyze New Report</h3>
 
       <div
@@ -48,20 +48,20 @@ export default function UploadCard({ onAnalyzed }: { onAnalyzed: (r: AnalysisRes
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
         className={`border-2 border-dashed rounded-lg py-10 flex flex-col items-center justify-center gap-3 transition-colors ${
-          dragOver ? "border-primary bg-primary/5" : "border-slate-200"
+          dragOver ? "border-primary bg-primary/5" : "border-border"
         }`}
       >
         <button
           onClick={() => inputRef.current?.click()}
           disabled={isPending}
-          className="bg-primary-dark text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-primary transition-colors disabled:opacity-60 cursor-pointer"
+          className="bg-primary text-primary-foreground text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 cursor-pointer"
         >
           {isPending ? "Analyzing…" : "UPLOAD PDF"}
         </button>
-        <p className="text-sm text-slate-500 flex items-center gap-1">
+        <p className="text-sm text-muted-foreground flex items-center gap-1">
           <UploadCloud size={14} /> Drag & Drop
         </p>
-        <p className="text-xs text-slate-400">Select a PDF report for AI-powered analysis.</p>
+        <p className="text-xs text-muted-foreground">Select a PDF report for AI-powered analysis.</p>
         <input
           ref={inputRef}
           type="file"

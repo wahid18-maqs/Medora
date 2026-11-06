@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { Search, ZoomIn, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
+import PageContainer from "@/components/layout/PageContainer";
 import AnalysisDrawer from "@/components/analysis/AnalysisDrawer";
 import { useHistory } from "@/hooks/useHistory";
+import { stripMarkdown } from "@/lib/utils";
 import type { HistoryItem, AnalysisResult } from "@/lib/types";
 
 const FILTER_PILLS = ["All Reports", "Routine", "Comprehensive", "Specialized"];
@@ -53,13 +55,13 @@ export default function ReportsHistoryPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="flex min-h-screen bg-background">
       <Sidebar activeHref="/dashboard/history" />
 
-      <main className="flex-1 px-10 py-8 min-w-0">
+      <PageContainer width="wide">
         {/* Breadcrumb Header */}
         <header className="mb-6">
-          <div className="flex items-center gap-2 text-sm text-slate-400 mb-1">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
             <Link href="/dashboard" className="hover:text-primary-dark transition-colors">
               Dashboard
             </Link>
@@ -72,8 +74,8 @@ export default function ReportsHistoryPage() {
         {/* Summary + Search Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Left Stat Card */}
-          <div className="bg-card rounded-xl shadow-sm p-6 border border-slate-100 flex flex-col justify-between">
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+          <div className="bg-card rounded-xl shadow-sm p-6 border border-border flex flex-col justify-between">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Total Reports
             </span>
             <div className="text-4xl font-bold text-primary-dark mt-2">
@@ -82,11 +84,11 @@ export default function ReportsHistoryPage() {
           </div>
 
           {/* Right Search & Filter Card */}
-          <div className="lg:col-span-2 bg-card rounded-xl shadow-sm p-6 border border-slate-100 flex flex-col justify-between gap-4">
+          <div className="lg:col-span-2 bg-card rounded-xl shadow-sm p-6 border border-border flex flex-col justify-between gap-4">
             <div className="relative w-full">
               <Search
                 size={18}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
               />
               <input
                 type="text"
@@ -96,7 +98,7 @@ export default function ReportsHistoryPage() {
                   setSearchQuery(e.target.value);
                   setPage(1);
                 }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full bg-background border border-input rounded-lg pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
 
@@ -113,8 +115,8 @@ export default function ReportsHistoryPage() {
                     }}
                     className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
                       isSelected
-                        ? "bg-primary-dark text-white shadow-sm"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     }`}
                   >
                     {pill}
@@ -126,11 +128,11 @@ export default function ReportsHistoryPage() {
         </div>
 
         {/* Reports Table Card */}
-        <section className="bg-card rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <section className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left border-collapse">
               <thead>
-                <tr className="text-slate-400 border-b border-slate-100 bg-slate-50/50">
+                <tr className="text-muted-foreground border-b border-border bg-muted/50">
                   <th className="font-medium px-6 py-3.5">Analysis ID</th>
                   <th className="font-medium px-6 py-3.5">Date Analyzed</th>
                   <th className="font-medium px-6 py-3.5">Report Type</th>
@@ -140,17 +142,17 @@ export default function ReportsHistoryPage() {
                   <th className="font-medium px-6 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {isLoading && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
+                    <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
                       Loading report history...
                     </td>
                   </tr>
                 )}
                 {!isLoading && items.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
+                    <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
                       No reports found matching your criteria.
                     </td>
                   </tr>
@@ -161,21 +163,26 @@ export default function ReportsHistoryPage() {
                       ? item.timestamp
                       : new Date(item.timestamp).toLocaleDateString();
 
-                    const doctorNotes = item.agents?.medical || item.analysis || "No doctor notes available.";
+                    const doctorNotes = stripMarkdown(item.agents?.medical || item.analysis) || "No doctor notes available.";
 
                     return (
-                      <tr
-                        key={(item.analysis_id || item.file) + item.timestamp + idx}
-                        className="hover:bg-slate-50/80 transition-colors"
-                      >
-                        <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-700">
-                          #{item.analysis_id || `BTA-2026-${(idx + 1).toString().padStart(3, "0")}`}
+                      <tr key={(item.analysis_id || item.file) + item.timestamp + idx}>
+                        <td className="px-6 py-4 font-mono text-xs font-semibold text-foreground">
+                          <Link
+                            href={`/dashboard?analysis_id=${encodeURIComponent(
+                              item.analysis_id || item.file
+                            )}`}
+                            title="Open this analysis in the Dashboard"
+                            className="text-primary-dark hover:underline cursor-pointer"
+                          >
+                            #{item.analysis_id || `BTA-2026-${(idx + 1).toString().padStart(3, "0")}`}
+                          </Link>
                         </td>
-                        <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{formattedDate}</td>
-                        <td className="px-6 py-4 font-medium text-slate-800">
+                        <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{formattedDate}</td>
+                        <td className="px-6 py-4 font-medium text-foreground">
                           {item.report_type || "Routine"}
                         </td>
-                        <td className="px-6 py-4 text-slate-600">
+                        <td className="px-6 py-4 text-muted-foreground">
                           {item.diagnostic_center || "Central Health Lab"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -183,7 +190,7 @@ export default function ReportsHistoryPage() {
                             {item.status || "Completed - Reviewed"}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-slate-600 text-xs max-w-xs">
+                        <td className="px-6 py-4 text-muted-foreground text-xs max-w-xs">
                           <p className="line-clamp-2 leading-relaxed">{doctorNotes}</p>
                         </td>
                         <td className="px-6 py-4 text-right whitespace-nowrap">
@@ -191,14 +198,14 @@ export default function ReportsHistoryPage() {
                             <button
                               onClick={() => handleSelectRow(item)}
                               title="View Details"
-                              className="p-1.5 text-slate-500 hover:text-primary-dark hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors cursor-pointer"
                             >
                               <ZoomIn size={16} />
                             </button>
                             <button
                               onClick={() => alert("PDF Export functionality is coming soon!")}
                               title="Export PDF"
-                              className="p-1.5 text-slate-500 hover:text-primary-dark hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                              className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors cursor-pointer"
                             >
                               <FileText size={16} />
                             </button>
@@ -212,37 +219,37 @@ export default function ReportsHistoryPage() {
           </div>
 
           {/* Pagination Footer */}
-          <div className="flex items-center justify-between px-6 py-4 bg-card border-t border-slate-100 text-xs text-slate-500">
+          <div className="flex items-center justify-between px-6 py-4 bg-card border-t border-border text-xs text-muted-foreground">
             <div>
-              Showing <span className="font-semibold text-slate-700">{startRange}</span>-
-              <span className="font-semibold text-slate-700">{endRange}</span> of{" "}
-              <span className="font-semibold text-slate-700">{totalCount}</span> results
+              Showing <span className="font-semibold text-foreground">{startRange}</span>-
+              <span className="font-semibold text-foreground">{endRange}</span> of{" "}
+              <span className="font-semibold text-foreground">{totalCount}</span> results
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
               >
                 <ChevronLeft size={16} />
               </button>
 
-              <span className="px-3 py-1 rounded-lg bg-primary-dark text-white font-medium text-xs">
+              <span className="px-3 py-1 rounded-lg bg-primary text-primary-foreground font-medium text-xs">
                 {page}
               </span>
 
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
               >
                 <ChevronRight size={16} />
               </button>
             </div>
           </div>
         </section>
-      </main>
+      </PageContainer>
 
       {/* Analysis Drawer right-side overlay */}
       {activeResult && (

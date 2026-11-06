@@ -1,18 +1,19 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any
-import datetime
+import datetime, uuid
 from bson.objectid import ObjectId
 from crewai import Crew, Process
 from agents import qa_agent
 from task import qa_task
 from db import reports_collection, chat_messages_collection
+from clean_text import strip_markdown
 from profile import get_current_user_email
 from store import IN_MEMORY_REPORTS
 
 router = APIRouter()
 
-# In-memory store fallback for chat messages when Mongo is unreachable
+# In-memory store fallback for chat messages when database is unreachable
 IN_MEMORY_CHAT_MESSAGES: List[Dict[str, Any]] = []
 
 class ChatMessagePayload(BaseModel):
@@ -29,10 +30,11 @@ def find_report_document(report_id: str, user_email: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # Try finding by analysis_id or file_name if not found by ObjectId
+    # Try to find by analysis_id or file_name if not found by ObjectId
     if not report:
         try:
             report = reports_collection.find_one({
+                "user_email": user_email,
                 "$or": [
                     {"analysis_id": report_id},
                     {"file_name": report_id}
@@ -74,7 +76,7 @@ def get_chat_history(
                 "id": str(msg.get("_id")),
                 "report_id": msg.get("report_id"),
                 "role": msg.get("role"),
-                "content": msg.get("content"),
+                "content": strip_markdown(msg.get("content", "")) if msg.get("role") == "assistant" else msg.get("content"),
                 "timestamp": msg.get("timestamp")
             })
     except Exception as err:
@@ -87,11 +89,45 @@ def get_chat_history(
                     "id": msg.get("id", str(uuid.uuid4())),
                     "report_id": msg.get("report_id"),
                     "role": msg.get("role"),
-                    "content": msg.get("content"),
+                    "content": strip_markdown(msg.get("content", "")) if msg.get("role") == "assistant" else msg.get("content"),
                     "timestamp": msg.get("timestamp")
                 })
 
     return {"report_id": report_id, "messages": messages}
+
+
+@router.get("/reports/{report_id}")
+def get_report(report_id: str, user_email: str = Depends(get_current_user_email)):
+    """Return a single saved analysis session for the authenticated user."""
+    report = find_report_document(report_id, user_email)
+
+    agents_raw = report.get("agents") if isinstance(report.get("agents"), dict) else {}
+    agents = {
+        key: strip_markdown(agents_raw.get(key)) if isinstance(agents_raw.get(key), str) else ""
+        for key in ("medical", "verification", "nutrition", "exercise")
+    }
+    if not agents["medical"]:
+        agents["medical"] = strip_markdown(report.get("analysis") or "")
+
+    timestamp = report.get("timestamp")
+    if isinstance(timestamp, datetime.datetime):
+        timestamp = timestamp.isoformat()
+    elif timestamp is not None:
+        timestamp = str(timestamp)
+
+    return {
+        "analysis_id": report.get("analysis_id"),
+        "report_type": report.get("report_type", "Routine"),
+        "diagnostic_center": report.get("diagnostic_center", "Unknown"),
+        "status": report.get("status", "Completed - Reviewed"),
+        "file": report.get("file_name") or report.get("file") or "",
+        "query": report.get("query", ""),
+        "analysis": strip_markdown(report.get("analysis") or ""),
+        "agents": agents,
+        "markers": report.get("markers", []),
+        "timestamp": timestamp or "",
+    }
+
 
 @router.post("/reports/{report_id}/chat")
 async def post_chat_message(
@@ -102,40 +138,87 @@ async def post_chat_message(
     """POST a question against a report. Runs qa_agent + qa_task and persists Q&A pair."""
     report = find_report_document(report_id, user_email)
 
-    report_text = report.get("analysis", "")
-    if report.get("agents", {}).get("medical"):
-        report_text = report["agents"]["medical"]
+    # Assemble full context from all agents and markers
+    context_sections = []
+    
+    # 1. Markers
+    markers = report.get("markers", [])
+    if markers:
+        marker_lines = [f"- {m.get('name')}: {m.get('value')} {m.get('unit')} (Normal: {m.get('range', [])}, Status: {m.get('status')})" for m in markers]
+        context_sections.append("Extracted Blood Markers:\n" + "\n".join(marker_lines))
+
+    # 2. Agent findings
+    agents_dict = report.get("agents", {})
+    if agents_dict:
+        for k in ["medical", "verification", "nutrition", "exercise"]:
+            if agents_dict.get(k):
+                context_sections.append(f"{k.capitalize()} Summary:\n{agents_dict[k]}")
+    elif report.get("analysis"):
+        context_sections.append(f"Analysis Summary:\n{report['analysis']}")
+
+    report_text = "\n\n".join(context_sections) if context_sections else report.get("analysis", "No detailed report text available.")
 
     # 1. Fetch past conversation history
     history_res = get_chat_history(report_id, user_email)
     existing_messages = history_res.get("messages", [])
 
-    # Guardrail: cap conversation history sent to LLM at last ~15 messages (sliding window)
+    # Guardrail:(sliding window)
     windowed_messages = existing_messages[-15:]
     history_str_list = [f"{m['role'].capitalize()}: {m['content']}" for m in windowed_messages]
     formatted_history = "\n".join(history_str_list) if history_str_list else "No prior conversation."
 
-    # 2. Run single Crew kickoff with qa_agent + qa_task
-    try:
-        qa_crew = Crew(
-            agents=[qa_agent],
-            tasks=[qa_task],
-            process=Process.sequential,
-            verbose=False
-        )
-        crew_result = await qa_crew.kickoff_async({
-            "report_text": report_text,
-            "conversation_history": formatted_history,
-            "question": payload.message
-        })
-        assistant_reply = str(crew_result).strip()
-    except Exception as err:
-        print("Q&A agent execution error:", str(err))
+    # 2. Run Crew kickoff
+    from agents import gemini_llm, groq_fallback_llm
+
+    assistant_reply = None
+
+    # Attempt 1: Gemini 3.5 Flash
+    if gemini_llm:
+        try:
+            qa_agent.llm = gemini_llm
+            qa_crew = Crew(
+                agents=[qa_agent],
+                tasks=[qa_task],
+                process=Process.sequential,
+                verbose=False
+            )
+            crew_result = await qa_crew.kickoff_async({
+                "report_text": report_text,
+                "conversation_history": formatted_history,
+                "question": payload.message
+            })
+            assistant_reply = str(crew_result).strip()
+        except Exception as gemini_err:
+            print("Chat Gemini execution error, attempting fallback to Groq:", str(gemini_err))
+
+    # Attempt 2: Groq Fallback
+    if not assistant_reply and groq_fallback_llm:
+        try:
+            qa_agent.llm = groq_fallback_llm
+            qa_crew = Crew(
+                agents=[qa_agent],
+                tasks=[qa_task],
+                process=Process.sequential,
+                verbose=False
+            )
+            crew_result = await qa_crew.kickoff_async({
+                "report_text": report_text,
+                "conversation_history": formatted_history,
+                "question": payload.message
+            })
+            assistant_reply = str(crew_result).strip()
+        except Exception as groq_err:
+            print("Chat Groq execution error:", str(groq_err))
+
+    # Attempt 3: Static fallback only if both APIs fail
+    if not assistant_reply:
         assistant_reply = f"I evaluated your question regarding '{payload.message}'. Based on the report findings: {report_text[:200]}..."
+
+    assistant_reply = strip_markdown(assistant_reply)
 
     now = datetime.datetime.utcnow().isoformat()
 
-    # 3. Store user message in Mongo / Memory
+    # 3. Store user message in Memory
     user_doc = {
         "report_id": report_id,
         "user_email": user_email,
@@ -144,7 +227,7 @@ async def post_chat_message(
         "timestamp": now
     }
 
-    # 4. Store assistant reply in Mongo / Memory
+    # 4. Store assistant reply inMemory
     assistant_doc = {
         "report_id": report_id,
         "user_email": user_email,

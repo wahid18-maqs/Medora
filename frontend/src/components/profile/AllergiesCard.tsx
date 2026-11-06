@@ -24,12 +24,12 @@ export default function AllergiesCard({
   ];
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
+    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-primary-dark">Allergies</h3>
         <button
           onClick={() => setIsEditing(true)}
-          className="p-1.5 text-slate-400 hover:text-primary-dark hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+          className="p-1.5 text-muted-foreground hover:text-primary-dark hover:bg-muted rounded-lg transition-colors cursor-pointer"
           title="Edit Allergies"
         >
           <Edit2 size={15} />
@@ -38,11 +38,11 @@ export default function AllergiesCard({
 
       <div>
         {profile.allergies.length === 0 ? (
-          <p className="text-xs text-slate-400 italic">No known allergies.</p>
+          <p className="text-xs text-muted-foreground italic">No known allergies.</p>
         ) : (
           <ul className="space-y-2">
             {profile.allergies.map((allergy, idx) => (
-              <li key={idx} className="flex items-center gap-2 text-xs text-slate-700">
+              <li key={idx} className="flex items-center gap-2 text-xs text-foreground">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
                 <span>{allergy}</span>
               </li>

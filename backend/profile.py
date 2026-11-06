@@ -1,19 +1,19 @@
 from fastapi import APIRouter, HTTPException, Depends, Cookie
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
-import jwt, os
-from db import profiles_collection, reports_collection
+import jwt
+from auth import SECRET
+from db import profiles_collection, reports_collection, users_collection
+from store import IN_MEMORY_PROFILES, IN_MEMORY_USERS
 
 # TODO: Confirm Mongo Atlas encryption-at-rest is enabled for the profiles_collection in production infrastructure config.
 
 router = APIRouter()
-SECRET = os.getenv("JWT_SECRET", "change-me")
 
 def get_current_user_email(session: Optional[str] = Cookie(default=None)) -> str:
-    """Resolve current user email securely from session cookie only."""
+    """Resolve current user email securely from the session cookie only."""
     if not session:
-        # Fallback to default user for local testing if unauthenticated
-        return "alex@example.com"
+        raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         payload = jwt.decode(session, SECRET, algorithms=["HS256"])
         return payload["sub"]
@@ -21,20 +21,20 @@ def get_current_user_email(session: Optional[str] = Cookie(default=None)) -> str
         raise HTTPException(status_code=401, detail="Invalid session token")
 
 class EmergencyContact(BaseModel):
-    name: str = "Sarah Johnson"
-    phone: str = "+1 (555) 987-6543"
+    name: str = ""
+    phone: str = ""
 
 class InsuranceInfo(BaseModel):
-    provider: str = "Blue Cross Shield"
-    memberId: str = "BCS-9948201"
+    provider: str = ""
+    memberId: str = ""
 
 class VitalsInfo(BaseModel):
-    weight: float = 74.0  # kg
-    height: float = 178.0  # cm
-    bloodType: str = "O+"
-    systolicBP: int = 120
-    diastolicBP: int = 80
-    restingHeartRate: int = 68
+    weight: float = 0.0  # kg
+    height: float = 0.0  # cm
+    bloodType: str = ""
+    systolicBP: int = 0
+    diastolicBP: int = 0
+    restingHeartRate: int = 0
 
     @property
     def bmi(self) -> float:
@@ -66,33 +66,32 @@ class VaccinationItem(BaseModel):
     date: str
 
 class HealthProfileModel(BaseModel):
-    name: str = "Alex Johnson"
-    age: int = 32
-    dob: str = "1994-05-14"
-    gender: str = "Male"
-    phone: str = "+1 (555) 234-5678"
-    email: str = "alex.johnson@example.com"
+    name: str = ""
+    age: int = 0
+    dob: str = ""
+    gender: str = ""
+    phone: str = ""
+    email: str = ""
     emergencyContact: EmergencyContact = Field(default_factory=EmergencyContact)
     insurance: InsuranceInfo = Field(default_factory=InsuranceInfo)
     vitals: VitalsInfo = Field(default_factory=VitalsInfo)
-    medicalConditions: List[MedicalConditionItem] = [
-        MedicalConditionItem(id="1", name="Mild Seasonal Allergies", notes="Managed with OTC antihistamines during spring.")
-    ]
-    surgeries: List[SurgicalHistoryItem] = [
-        SurgicalHistoryItem(id="1", procedure="Appendectomy", date="2018-09-12")
-    ]
-    medications: List[MedicationItem] = [
-        MedicationItem(id="1", name="Vitamin D3", dosage="2000 IU", schedule="Daily with morning meal"),
-        MedicationItem(id="2", name="Omega-3 Fish Oil", dosage="1000 mg", schedule="Twice daily")
-    ]
-    allergies: List[str] = ["Penicillin", "Dust Mites"]
-    vaccinations: List[VaccinationItem] = [
-        VaccinationItem(id="1", name="COVID-19 Booster (Pfizer)", date="2023-10-15"),
-        VaccinationItem(id="2", name="Influenza Vaccine", date="2023-11-01"),
-        VaccinationItem(id="3", name="Tetanus (Tdap)", date="2020-04-20")
-    ]
+    medicalConditions: List[MedicalConditionItem] = Field(default_factory=list)
+    surgeries: List[SurgicalHistoryItem] = Field(default_factory=list)
+    medications: List[MedicationItem] = Field(default_factory=list)
+    allergies: List[str] = Field(default_factory=list)
+    vaccinations: List[VaccinationItem] = Field(default_factory=list)
 
-from store import IN_MEMORY_PROFILES
+
+def _resolve_user_name(user_email: str) -> str:
+    try:
+        user = users_collection.find_one({"email": user_email})
+        if user:
+            return user.get("name", "")
+    except Exception as err:
+        print("MongoDB user lookup error, falling back to memory:", str(err))
+    user = IN_MEMORY_USERS.get(user_email)
+    return user.get("name", "") if user else ""
+
 
 @router.get("/profile")
 
@@ -111,12 +110,12 @@ def get_profile(user_email: str = Depends(get_current_user_email)):
         profile_data = IN_MEMORY_PROFILES.get(user_email)
 
     if not profile_data:
-        default_model = HealthProfileModel(email=user_email)
+        default_model = HealthProfileModel(name=_resolve_user_name(user_email), email=user_email)
         profile_data = default_model.dict()
 
     # Calculate server-side computed BMI
-    w = profile_data.get("vitals", {}).get("weight", 74)
-    h = profile_data.get("vitals", {}).get("height", 178)
+    w = profile_data.get("vitals", {}).get("weight", 0)
+    h = profile_data.get("vitals", {}).get("height", 0)
     if h > 0:
         hm = h / 100.0
         profile_data["vitals"]["bmi"] = round(w / (hm * hm), 1)
@@ -140,8 +139,8 @@ def update_profile(
     validated_dict = validated.dict()
 
     # Re-calculate server-side computed BMI
-    w = validated_dict.get("vitals", {}).get("weight", 74)
-    h = validated_dict.get("vitals", {}).get("height", 178)
+    w = validated_dict.get("vitals", {}).get("weight", 0)
+    h = validated_dict.get("vitals", {}).get("height", 0)
     if h > 0:
         hm = h / 100.0
         validated_dict["vitals"]["bmi"] = round(w / (hm * hm), 1)
@@ -168,7 +167,7 @@ def get_biomarker_trend(
     trend_points = []
     
     try:
-        records = list(reports_collection.find().sort("timestamp", 1))
+        records = list(reports_collection.find({"user_email": user_email}).sort("timestamp", 1))
         for r in records:
             markers = r.get("markers", [])
             for m in markers:

@@ -1,10 +1,25 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-card: var(--card);
-  --color-primary: #3B82F6;
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
   --color-primary-dark: var(--primary-dark-text);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
 
   --color-medical-bg: var(--medical-bg);
   --color-medical-text: var(--medical-text);
@@ -20,138 +35,187 @@
 }
 
 :root {
-  --background: #F8FAFC;
-  --foreground: #1E293B;
-  --surface: #F8FAFC;
-  --card: #FFFFFF;
-  --primary-dark-text: #0F172A;
+  color-scheme: light;
 
-  --medical-bg: #E6F4EA;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --surface: #f8fafc;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #3b82f6;
+
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --primary-dark-text: #0f172a;
+
+  --accent: #eff6ff;
+  --accent-foreground: #1d4ed8;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --medical-bg: #e6f4ea;
   --medical-text: #137333;
 
-  --verification-bg: #FEF7E0;
-  --verification-text: #B06000;
+  --verification-bg: #fef7e0;
+  --verification-text: #b06000;
 
-  --nutrition-bg: #E8F0FE;
-  --nutrition-text: #1A73E8;
+  --nutrition-bg: #e8f0fe;
+  --nutrition-text: #1a73e8;
 
-  --exercise-bg: #FCE8E6;
-  --exercise-text: #C5221F;
+  --exercise-bg: #fce8e6;
+  --exercise-text: #c5221f;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0B0F17;
-    --foreground: #F1F5F9;
-    --surface: #0B0F17;
-    --card: #151C2C;
-    --primary-dark-text: #F8FAFC;
+.dark {
+  color-scheme: dark;
 
-    --medical-bg: #064E3B;
-    --medical-text: #6EE7B7;
+  --background: #0b0f17;
+  --foreground: #f1f5f9;
+  --surface: #0b0f17;
+  --card: #151c2c;
+  --card-foreground: #f1f5f9;
 
-    --verification-bg: #78350F;
-    --verification-text: #FDE68A;
+  --muted: #1a2336;
+  --muted-foreground: #94a3b8;
+  --border: #243048;
+  --input: #334155;
+  --ring: #60a5fa;
 
-    --nutrition-bg: #1E3A8A;
-    --nutrition-text: #93C5FD;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --primary-dark-text: #f8fafc;
 
-    --exercise-bg: #881337;
-    --exercise-text: #FCA5A5;
-  }
+  --accent: #1e293b;
+  --accent-foreground: #60a5fa;
 
-  /* Dark theme global overrides for default borders and muted text */
-  .border-slate-100,
-  .border-slate-200 {
-    border-color: #243048 !important;
-  }
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
 
-  .bg-slate-50,
-  .bg-slate-50\/50,
-  .bg-slate-100 {
-    background-color: #1A2336 !important;
-  }
+  --medical-bg: #064e3b;
+  --medical-text: #6ee7b7;
 
-  .text-slate-400,
-  .text-slate-500 {
-    color: #94A3B8 !important;
-  }
+  --verification-bg: #78350f;
+  --verification-text: #fde68a;
 
-  .text-slate-600,
-  .text-slate-700,
-  .text-slate-800 {
-    color: #E2E8F0 !important;
-  }
+  --nutrition-bg: #1e3a8a;
+  --nutrition-text: #93c5fd;
 
-  input, textarea, select {
-    background-color: #1A2336 !important;
-    color: #F8FAFC !important;
-    border-color: #334155 !important;
-  }
+  --exercise-bg: #881337;
+  --exercise-text: #fca5a5;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Main Action Buttons (UPLOAD PDF, Sign in, Submit, etc.): Transparent by default, solid blue on hover */
+/* Legacy slate utilities still used by older screens: keep them legible in dark mode. */
+.dark .border-slate-50,
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .border-slate-200\/80,
+.dark .border-slate-200\/60 {
+  border-color: var(--border) !important;
+}
+
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-50 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border) !important;
+}
+
+.dark .bg-slate-50,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-100,
+.dark .bg-slate-200 {
+  background-color: var(--muted) !important;
+}
+
+.dark .text-slate-300,
+.dark .text-slate-400,
+.dark .text-slate-500 {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-700,
+.dark .text-slate-800,
+.dark .text-slate-900 {
+  color: var(--foreground) !important;
+}
+
+.dark .text-slate-200 {
+  color: #cbd5e1 !important;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: var(--muted) !important;
+  color: var(--foreground) !important;
+  border-color: var(--input) !important;
+}
+
+/* Thin scrollbar for the Report Assistant chat */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-foreground) transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--muted-foreground);
+  border-radius: 9999px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--foreground);
+}
+
+/* Main action buttons: outline by default, solid primary on hover. */
 button.bg-primary-dark,
 a.bg-primary-dark {
   background-color: transparent !important;
   color: var(--primary-dark-text) !important;
-  border: 1.5px solid #2563EB !important;
-  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  border: 1.5px solid var(--primary) !important;
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 button.bg-primary-dark:hover,
 a.bg-primary-dark:hover,
 .hover\:bg-primary:hover {
-  background-color: #2563EB !important;
-  color: #FFFFFF !important;
-  border-color: #2563EB !important;
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border-color: var(--primary) !important;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
-/* Secondary/Outline Buttons styling */
+/* Secondary/outline buttons */
 .hover\:bg-slate-50 {
   background-color: transparent !important;
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .hover\:bg-slate-50:hover {
-  background-color: #EFF6FF !important;
-  color: #1D4ED8 !important;
-  border-color: #BFDBFE !important;
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+  border-color: var(--border) !important;
 }
-
-@media (prefers-color-scheme: dark) {
-  button.bg-primary-dark,
-  a.bg-primary-dark {
-    color: #F8FAFC !important;
-    border-color: #3B82F6 !important;
-  }
-
-  button.bg-primary-dark:hover,
-  a.bg-primary-dark:hover {
-    background-color: #3B82F6 !important;
-    color: #FFFFFF !important;
-    border-color: #3B82F6 !important;
-  }
-
-  .hover\:bg-slate-50 {
-    background-color: transparent !important;
-  }
-
-  .hover\:bg-slate-50:hover {
-    background-color: #1E293B !important;
-    color: #60A5FA !important;
-    border-color: #3B82F6 !important;
-  }
-}
-
-
-
-

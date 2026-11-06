@@ -2,33 +2,40 @@
 
 import Link from "next/link";
 import Sidebar from "@/components/layout/Sidebar";
+import PageContainer from "@/components/layout/PageContainer";
 import FAQCard from "@/components/support/FAQCard";
 import ContactSupportCard from "@/components/support/ContactSupportCard";
 
 export default function SupportPage() {
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="flex min-h-screen bg-background">
       <Sidebar activeHref="/dashboard/support" />
 
-      <main className="flex-1 px-10 py-8 min-w-0">
-        {/* Breadcrumb Header */}
-        <header className="mb-6">
-          <div className="flex items-center gap-2 text-sm text-slate-400 mb-1">
-            <Link href="/dashboard" className="hover:text-primary-dark transition-colors">
+      <PageContainer>
+        <header className="mb-8">
+          <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
+            <Link href="/dashboard" className="transition-colors hover:text-primary">
               Dashboard
             </Link>
             <span>/</span>
-            <span className="font-semibold text-primary-dark">Support</span>
+            <span className="font-semibold text-foreground">Support</span>
           </div>
-          <h1 className="text-2xl font-semibold text-primary-dark">Help & Support</h1>
+          <h1 className="text-2xl font-semibold text-primary-dark">Help &amp; Support</h1>
         </header>
 
-        {/* Two Section Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl">
+        <div className="divide-y divide-border">
           <FAQCard />
           <ContactSupportCard />
         </div>
-      </main>
+
+        <footer className="mt-10 border-t border-border pt-6 text-xs leading-relaxed text-muted-foreground">
+          <p>
+            Medora provides informational insights and does not replace professional medical
+            advice.
+          </p>
+          <p className="mt-2">© 2026 Medora. All rights reserved.</p>
+        </footer>
+      </PageContainer>
     </div>
   );
 }

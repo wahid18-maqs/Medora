@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Send, CheckCircle2 } from "lucide-react";
+import { Send, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 
@@ -44,88 +44,85 @@ export default function ContactSupportCard() {
   }
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <MessageSquare className="text-primary-dark" size={20} />
-          <h2 className="text-lg font-semibold text-primary-dark">Contact Support</h2>
-        </div>
-        <p className="text-xs text-slate-500 mb-6">
-          Have a question or feedback? Send our team a message directly
+    <section className="py-6">
+      <div className="mb-5">
+        <h2 className="text-base font-semibold text-foreground">Contact Support</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Have a question or feedback? Send our team a message directly.
         </p>
+      </div>
 
-        {submitted ? (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center">
-            <CheckCircle2 size={36} className="text-emerald-600 mx-auto mb-2" />
-            <h3 className="text-sm font-semibold text-emerald-800 mb-1">
-              Message Received!
-            </h3>
-            <p className="text-xs text-emerald-700 leading-relaxed mb-4">
-              Thank you for reaching out. We&apos;ve received your support request and will reply to{" "}
-              <span className="font-semibold">{user?.email}</span> as soon as possible.
-            </p>
-            <button
-              onClick={() => setSubmitted(false)}
-              className="text-xs font-medium bg-emerald-700 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors cursor-pointer"
-            >
-              Send Another Message
-            </button>
+      {submitted ? (
+        <div className="rounded-xl border border-border bg-muted/50 p-6 text-center">
+          <CheckCircle2 size={36} className="mx-auto mb-2 text-emerald-600 dark:text-emerald-400" />
+          <h3 className="mb-1 text-sm font-semibold text-foreground">Message received</h3>
+          <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+            Thank you for reaching out. We&apos;ve received your support request and will reply to{" "}
+            <span className="font-medium text-foreground">{user?.email}</span> as soon as possible.
+          </p>
+          <button
+            onClick={() => setSubmitted(false)}
+            className="cursor-pointer rounded-lg border border-border px-4 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            Send another message
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              Your email address
+            </label>
+            <input
+              type="email"
+              readOnly
+              value={user?.email || "user@example.com"}
+              className="w-full cursor-not-allowed rounded-lg border border-input bg-muted px-3 py-2 text-sm text-muted-foreground"
+            />
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">
-                Your Email Address
-              </label>
-              <input
-                type="email"
-                readOnly
-                value={user?.email || "user@example.com"}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 cursor-not-allowed"
-              />
-            </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">
-                Subject <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Question about my report analysis"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-            </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              Subject <span className="text-destructive">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Question about my report analysis"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+            />
+          </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">
-                Message <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                rows={4}
-                required
-                placeholder="Describe your question or issue in detail (at least 10 characters)..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-            </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
+              Message <span className="text-destructive">*</span>
+            </label>
+            <textarea
+              rows={5}
+              required
+              placeholder="Describe your question or issue in detail (at least 10 characters)..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+            />
+          </div>
 
-            {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
+          {error && <p className="text-xs font-medium text-destructive">{error}</p>}
 
+          <div className="flex justify-end">
             <button
               type="submit"
               disabled={submitting}
-              className="w-full flex items-center justify-center gap-2 bg-primary-dark text-white text-xs font-medium py-2.5 rounded-lg hover:bg-primary transition-colors cursor-pointer disabled:opacity-60"
+              className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               <Send size={14} />
               {submitting ? "Sending Message..." : "Submit Support Request"}
             </button>
-          </form>
-        )}
-      </div>
-    </div>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }

@@ -53,41 +53,47 @@ export default function DataPrivacyCard() {
     confirmEmailInput.trim().toLowerCase() === (user?.email || "").toLowerCase();
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
-      <div>
-        <h2 className="text-lg font-semibold text-primary-dark mb-1">Data & Privacy</h2>
-        <p className="text-xs text-slate-500 mb-6">
-          Manage data export and permanent account deletion
+    <section className="py-6">
+      <div className="mb-2">
+        <h2 className="text-base font-semibold text-foreground">Data &amp; Privacy</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage your health data exports and account deletion.
         </p>
+      </div>
 
-        {/* Export Data Section */}
-        <div className="pb-6 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-700 mb-1">Export Personal Data</h3>
-          <p className="text-xs text-slate-500 mb-3">
-            Download a JSON copy of all your analyzed blood test reports and health profile records.
-          </p>
+      <div className="divide-y divide-border">
+        <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-foreground">Export my data</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Download a JSON copy of all your analyzed reports and health profile records.
+            </p>
+            {exportError && (
+              <p className="mt-2 text-xs font-medium text-destructive">{exportError}</p>
+            )}
+          </div>
+
           <button
             onClick={handleExportData}
             disabled={exporting}
-            className="flex items-center gap-2 bg-primary-dark text-white text-xs font-medium px-4 py-2 rounded-lg hover:bg-primary transition-colors cursor-pointer disabled:opacity-60"
+            className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Download size={14} />
             {exporting ? "Preparing Export..." : "Export my data"}
           </button>
-          {exportError && (
-            <p className="text-xs text-red-600 mt-2 font-medium">{exportError}</p>
-          )}
         </div>
 
-        {/* Delete Account Section */}
-        <div className="pt-6">
-          <h3 className="text-sm font-semibold text-red-600 mb-1">Delete Account</h3>
-          <p className="text-xs text-slate-500 mb-3">
-            Permanently delete your account and remove all health records and history from our database.
-          </p>
+        <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-destructive">Danger zone</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Permanently delete your account and remove all reports and history from our database.
+            </p>
+          </div>
+
           <button
             onClick={() => setIsDeleteDialogOpen(true)}
-            className="flex items-center gap-2 border border-red-300 text-red-600 hover:bg-red-50 text-xs font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer"
+            className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-destructive/40 px-4 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
           >
             <Trash2 size={14} />
             Delete my account
@@ -95,47 +101,48 @@ export default function DataPrivacyCard() {
         </div>
       </div>
 
-      {/* Delete Confirmation Radix Dialog */}
       <Dialog.Root open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 transition-opacity" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-card rounded-xl shadow-xl border border-slate-100 p-6 z-50 focus:outline-none">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2 text-red-600">
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-xl focus:outline-none">
+            <div className="mb-3 flex items-start justify-between">
+              <div className="flex items-center gap-2 text-destructive">
                 <AlertTriangle size={20} />
-                <Dialog.Title className="text-base font-semibold">
+                <Dialog.Title className="text-base font-semibold text-foreground">
                   Confirm Account Deletion
                 </Dialog.Title>
               </div>
               <Dialog.Close asChild>
-                <button className="text-slate-400 hover:text-slate-600 rounded-md p-1 cursor-pointer">
+                <button className="cursor-pointer rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground">
                   <X size={18} />
                 </button>
               </Dialog.Close>
             </div>
 
-            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-              This permanently deletes your reports and profile. This action cannot be undone. Please type your email{" "}
-              <span className="font-semibold text-slate-800">{user?.email}</span> to confirm deletion:
-            </p>
+            <Dialog.Description className="mb-4 text-xs leading-relaxed text-muted-foreground">
+              This permanently deletes your reports and profile. This action cannot be undone.
+              Please type your email{" "}
+              <span className="font-semibold text-foreground">{user?.email}</span> to confirm
+              deletion:
+            </Dialog.Description>
 
             <input
               type="email"
               value={confirmEmailInput}
               onChange={(e) => setConfirmEmailInput(e.target.value)}
               placeholder={user?.email || "user@example.com"}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+              className="mb-3 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-destructive/40"
             />
 
             {deleteError && (
-              <p className="text-xs text-red-600 mb-3 font-medium">{deleteError}</p>
+              <p className="mb-3 text-xs font-medium text-destructive">{deleteError}</p>
             )}
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
               <button
                 type="button"
                 onClick={() => setIsDeleteDialogOpen(false)}
-                className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                className="cursor-pointer rounded-lg px-4 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted"
               >
                 Cancel
               </button>
@@ -143,7 +150,7 @@ export default function DataPrivacyCard() {
                 type="button"
                 disabled={!isEmailMatching || deleting}
                 onClick={handleDeleteAccount}
-                className="px-4 py-2 text-xs font-medium bg-red-600 text-white hover:bg-red-700 rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="cursor-pointer rounded-lg bg-destructive px-4 py-2 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {deleting ? "Deleting..." : "Permanently Delete Account"}
               </button>
@@ -151,6 +158,6 @@ export default function DataPrivacyCard() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-    </div>
+    </section>
   );
 }

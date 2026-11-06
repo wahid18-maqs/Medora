@@ -24,12 +24,12 @@ export default function ContactInsuranceCard({
   ];
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
+    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-primary-dark">Contact & Insurance</h3>
         <button
           onClick={() => setIsEditing(true)}
-          className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-primary-dark hover:bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary-dark hover:bg-muted px-2.5 py-1.5 rounded-lg border border-border transition-colors cursor-pointer"
         >
           <Edit2 size={13} />
           Edit Info
@@ -37,34 +37,34 @@ export default function ContactInsuranceCard({
       </div>
 
       <div className="space-y-3 text-sm">
-        <div className="flex items-center gap-2.5 text-slate-600">
-          <Phone size={15} className="text-slate-400 shrink-0" />
+        <div className="flex items-center gap-2.5 text-foreground">
+          <Phone size={15} className="text-muted-foreground shrink-0" />
           <span>{profile.phone}</span>
         </div>
-        <div className="flex items-center gap-2.5 text-slate-600">
-          <Mail size={15} className="text-slate-400 shrink-0" />
+        <div className="flex items-center gap-2.5 text-foreground">
+          <Mail size={15} className="text-muted-foreground shrink-0" />
           <span className="truncate">{profile.email}</span>
         </div>
 
-        <div className="pt-3 border-t border-slate-100">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 mb-1">
+        <div className="pt-3 border-t border-border">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-1">
             <ShieldAlert size={14} className="text-amber-500" />
             <span>Emergency Contact</span>
           </div>
-          <p className="text-xs font-semibold text-slate-700">
+          <p className="text-xs font-semibold text-foreground">
             {profile.emergencyContact.name}{" "}
-            <span className="font-normal text-slate-500">({profile.emergencyContact.phone})</span>
+            <span className="font-normal text-muted-foreground">({profile.emergencyContact.phone})</span>
           </p>
         </div>
 
-        <div className="pt-3 border-t border-slate-100">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-400 mb-1">
+        <div className="pt-3 border-t border-border">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-1">
             <Shield size={14} className="text-primary-dark" />
             <span>Insurance</span>
           </div>
-          <p className="text-xs font-semibold text-slate-700">
+          <p className="text-xs font-semibold text-foreground">
             {profile.insurance.provider}{" "}
-            <span className="font-mono text-slate-500">ID: {profile.insurance.memberId}</span>
+            <span className="font-mono text-muted-foreground">ID: {profile.insurance.memberId}</span>
           </p>
         </div>
       </div>

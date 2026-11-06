@@ -1,31 +1,30 @@
-## Importing libraries and files
 from crewai import Task
 from agents import doctor, verifier, nutritionist, exercise_specialist, qa_agent
 from tools import search_tool, blood_test_tool,nutrition_tool, exercise_tool
 
-
 ## Creating a task to help solve user's query
 help_patients = Task(
-    description="Interpret a user's health-related query based on their blood test report.\n\
-Use the uploaded blood test document to identify any anomalies and respond with thoughtful medical insights.\n\
-If the report lacks sufficient data, offer general guidance based on best practices or recent research.",
+    description="Interpret the patient's health-related query based on their blood test report data below.\n\
+Blood Test Report Data:\n{report}\n\n\
+Query: {query}\n\n\
+Identify any anomalies and respond with thoughtful, evidence-based medical insights based on these findings.",
 
     expected_output="""Your response should include:
 - A brief summary of key findings from the blood report
 - Interpretation of any unusual markers or results
 - Personalized health suggestions or medical advice
-- Additional resources or references (real or sample links for demo)""",
+- Recommended next steps or clinical follow-up""",
 
     agent=doctor,
-    tools=[blood_test_tool, nutrition_tool, exercise_tool],
+    tools=[nutrition_tool, exercise_tool],
     input_variables=["query", "report"],
     async_execution=False,
-    
 )
 
 ## Creating a nutrition analysis task
 nutrition_analysis = Task(
-    description="Evaluate the patient's blood test report to determine dietary adjustments.\n\
+    description="Evaluate the patient's blood test report data below to determine dietary adjustments.\n\
+Blood Test Report Data:\n{report}\n\n\
 Focus on markers like glucose, lipids, vitamin levels, and iron to suggest nutrition strategies.\n\
 Address any deficiencies or risks using evidence-based diet planning.",
 
@@ -33,45 +32,46 @@ Address any deficiencies or risks using evidence-based diet planning.",
 - Nutritional deficiencies or imbalances detected
 - Recommended foods or dietary changes to address those
 - Suggested supplements if necessary
-- Example meals or food groups
-- Links to reputable sources (real or educational placeholders)""",
+- Example meals or food groups""",
 
     agent=nutritionist,
-    tools=[blood_test_tool],
+    tools=[nutrition_tool],
+    input_variables=["report"],
     async_execution=False,
 )
 
 ## Creating an exercise planning task
 exercise_planning = Task(
-    description="Design an exercise routine tailored to the patient's health status as reflected in the blood report.\n\
-Consider cardiovascular health, inflammation markers, or overall fitness when creating the plan.",
+    description="Design an exercise routine tailored to the patient's health status as reflected in their blood report data below.\n\
+Blood Test Report Data:\n{report}\n\n\
+Consider cardiovascular health, metabolic markers, and overall fitness when creating the plan.",
 
     expected_output="""Your response should cover:
 - Appropriate exercise types (e.g., cardio, strength, flexibility)
 - Frequency and intensity recommendations
 - Safety notes or health conditions to consider
-- Progress tracking suggestions
-- References to exercise guidelines or research (real or placeholder)""",
+- Progress tracking suggestions""",
 
     agent=exercise_specialist,
-    tools=[blood_test_tool],
+    tools=[exercise_tool],
+    input_variables=["report"],
     async_execution=False,
 )
 
 ## Creating a verification task
 verification = Task(
-    description="Verify whether the uploaded document is a valid blood test report.\n\
-Attempt to parse test names, values, units, and reference ranges.\n\
-If the document is invalid or lacks required data, report it clearly.",
+    description="Verify whether the blood test report data below is a valid, authentic laboratory report.\n\
+Blood Test Report Data:\n{report}\n\n\
+Evaluate the test names, measured values, units, and reference ranges present in the text.",
 
     expected_output="""Provide:
 - Validation status (Valid/Invalid)
-- Extracted medical values and units (if any)
-- Format issues or errors found
-- Confidence score or notes on reliability""",
+- Key medical values and units extracted
+- Completeness and clarity notes""",
 
     agent=verifier,
-    tools=[blood_test_tool],
+    tools=[],
+    input_variables=["report"],
     async_execution=False
 )
 

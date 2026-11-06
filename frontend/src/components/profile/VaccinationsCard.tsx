@@ -28,12 +28,12 @@ export default function VaccinationsCard({
     .join("\n");
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
+    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-primary-dark">Vaccinations</h3>
         <button
           onClick={() => setIsEditing(true)}
-          className="p-1.5 text-slate-400 hover:text-primary-dark hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+          className="p-1.5 text-muted-foreground hover:text-primary-dark hover:bg-muted rounded-lg transition-colors cursor-pointer"
           title="Edit Vaccinations"
         >
           <Edit2 size={15} />
@@ -42,16 +42,16 @@ export default function VaccinationsCard({
 
       <div>
         {profile.vaccinations.length === 0 ? (
-          <p className="text-xs text-slate-400 italic">No vaccinations recorded.</p>
+          <p className="text-xs text-muted-foreground italic">No vaccinations recorded.</p>
         ) : (
           <div className="space-y-2">
             {profile.vaccinations.map((vac, idx) => (
               <div
                 key={vac.id || idx}
-                className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg text-xs"
+                className="flex items-center justify-between bg-muted px-3 py-2 rounded-lg text-xs"
               >
-                <span className="font-medium text-slate-700">{vac.name}</span>
-                <span className="text-slate-400 font-mono text-[11px]">{vac.date}</span>
+                <span className="font-medium text-foreground">{vac.name}</span>
+                <span className="text-muted-foreground font-mono text-[11px]">{vac.date}</span>
               </div>
             ))}
           </div>
