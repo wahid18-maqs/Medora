@@ -61,13 +61,13 @@ export default function AnalysisDrawer({
           </Tabs.Content>
 
           <Tabs.Content value="chat">
-            <ReportChat reportId={result.id} />
+            <ReportChat reportId={result.id} markers={result.markers} />
           </Tabs.Content>
         </Tabs.Root>
       </div>
 
       {/* 3. Existing Tab Pair: RecommendationTabs (Unchanged position & internal logic) */}
-      <RecommendationTabs agents={result.agents} />
+      <RecommendationTabs agents={result.agents} markers={result.markers} />
 
       {/* 4. Action Footer (Unchanged position) */}
       <ActionFooter />

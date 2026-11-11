@@ -20,12 +20,12 @@ export default function DetailedBreakdownTable({ markers }: { markers: Marker[] 
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="text-left text-xs text-muted-foreground border-b border-border">
-              <th className="py-2.5 font-medium">Marker Name</th>
-              <th className="py-2.5 font-medium">Measured Value</th>
-              <th className="py-2.5 font-medium">Reference Range</th>
-              <th className="w-[200px] py-2.5 font-medium text-center">Visual Indicator</th>
-              <th className="py-2.5 font-medium text-right">Status</th>
+            <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <th className="py-3 font-semibold">Marker Name</th>
+              <th className="py-3 font-semibold">Measured Value</th>
+              <th className="py-3 font-semibold">Reference Range</th>
+              <th className="w-[200px] py-3 text-center font-semibold">Visual Indicator</th>
+              <th className="py-3 text-right font-semibold">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -34,10 +34,10 @@ export default function DetailedBreakdownTable({ markers }: { markers: Marker[] 
                 key={m.name + idx}
                 className="border-b border-border/60 transition-colors hover:bg-muted/50"
               >
-                <td className="py-4 align-middle font-medium text-foreground">{m.name}</td>
-                <td className="py-4 align-middle font-semibold text-foreground">
+                <td className="py-4 align-middle text-sm font-medium text-foreground">{m.name}</td>
+                <td className="py-4 align-middle text-sm font-semibold text-foreground">
                   {m.value}{" "}
-                  <span className="text-xs font-normal text-muted-foreground">{m.unit}</span>
+                  <span className="text-[13px] font-normal text-muted-foreground">{m.unit}</span>
                 </td>
                 <td className="py-4 align-middle text-xs text-muted-foreground">
                   {m.range[0]} - {m.range[1]}
@@ -49,7 +49,7 @@ export default function DetailedBreakdownTable({ markers }: { markers: Marker[] 
                 </td>
                 <td className="py-4 align-middle text-right">
                   <span
-                    className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                    className={`inline-block rounded-full border px-3 py-1 text-xs font-semibold ${
                       STATUS_STYLE[m.status] || "border-border bg-muted text-muted-foreground"
                     }`}
                   >

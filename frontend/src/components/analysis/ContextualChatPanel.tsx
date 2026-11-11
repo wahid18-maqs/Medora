@@ -2,9 +2,11 @@
 
 import { X, Bot, Sparkles, ChevronRight } from "lucide-react";
 import ReportChat from "@/components/analysis/ReportChat";
+import type { Marker } from "@/lib/types";
 
 interface ContextualChatPanelProps {
   reportId: string;
+  markers?: Marker[];
   isOpen: boolean;
   onClose: () => void;
   onOpen?: () => void;
@@ -12,6 +14,7 @@ interface ContextualChatPanelProps {
 
 export default function ContextualChatPanel({
   reportId,
+  markers = [],
   isOpen,
   onClose,
 }: ContextualChatPanelProps) {
@@ -23,13 +26,13 @@ export default function ContextualChatPanel({
     <>
       {/* Mobile backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+        className="fixed inset-0 z-40 bg-black/40 lg:hidden print:hidden"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Desktop: sticky right column. Mobile: full-screen overlay. */}
-      <div className="fixed left-0 top-0 z-50 h-dvh w-full lg:sticky lg:left-auto lg:top-0 lg:z-30 lg:h-dvh lg:w-[360px] lg:shrink-0 xl:w-[400px]">
+      <div className="fixed left-0 top-0 z-50 h-dvh w-full lg:sticky lg:left-auto lg:top-0 lg:z-30 lg:h-dvh lg:w-[360px] lg:shrink-0 xl:w-[400px] print:hidden">
         {/* Collapse toggle button on the left edge (matches sidebar collapse pattern) */}
         <button
           onClick={onClose}
@@ -39,7 +42,7 @@ export default function ContextualChatPanel({
           <ChevronRight size={14} />
         </button>
 
-        <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden border-l border-border bg-card shadow-xl">
+        <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden border-l border-border bg-card shadow-xl print:hidden">
           {/* Header */}
           <div className="flex shrink-0 items-center justify-between border-b border-border p-4">
             <div className="flex items-center gap-2">
@@ -51,7 +54,7 @@ export default function ContextualChatPanel({
                   Report Assistant
                   <Sparkles size={13} className="text-amber-500 fill-amber-500" />
                 </h3>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Grounded strictly in your report findings
                 </p>
               </div>
@@ -68,7 +71,7 @@ export default function ContextualChatPanel({
 
           {/* Embedded chat container */}
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3">
-            <ReportChat reportId={reportId} />
+            <ReportChat reportId={reportId} markers={markers} />
           </div>
         </aside>
       </div>

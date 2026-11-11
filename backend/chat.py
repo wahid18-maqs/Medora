@@ -7,7 +7,7 @@ from crewai import Crew, Process
 from agents import qa_agent
 from task import qa_task
 from db import reports_collection, chat_messages_collection
-from clean_text import strip_markdown
+from clean_text import strip_markdown, sanitize_markdown
 from profile import get_current_user_email
 from store import IN_MEMORY_REPORTS
 
@@ -103,11 +103,11 @@ def get_report(report_id: str, user_email: str = Depends(get_current_user_email)
 
     agents_raw = report.get("agents") if isinstance(report.get("agents"), dict) else {}
     agents = {
-        key: strip_markdown(agents_raw.get(key)) if isinstance(agents_raw.get(key), str) else ""
+        key: sanitize_markdown(agents_raw.get(key)) if isinstance(agents_raw.get(key), str) else ""
         for key in ("medical", "verification", "nutrition", "exercise")
     }
     if not agents["medical"]:
-        agents["medical"] = strip_markdown(report.get("analysis") or "")
+        agents["medical"] = sanitize_markdown(report.get("analysis") or "")
 
     timestamp = report.get("timestamp")
     if isinstance(timestamp, datetime.datetime):
@@ -118,11 +118,12 @@ def get_report(report_id: str, user_email: str = Depends(get_current_user_email)
     return {
         "analysis_id": report.get("analysis_id"),
         "report_type": report.get("report_type", "Routine"),
-        "diagnostic_center": report.get("diagnostic_center", "Unknown"),
+        "diagnostic_center": report.get("diagnostic_center", "Not specified"),
+        "marker_warning": report.get("marker_warning"),
         "status": report.get("status", "Completed - Reviewed"),
         "file": report.get("file_name") or report.get("file") or "",
         "query": report.get("query", ""),
-        "analysis": strip_markdown(report.get("analysis") or ""),
+        "analysis": sanitize_markdown(report.get("analysis") or ""),
         "agents": agents,
         "markers": report.get("markers", []),
         "timestamp": timestamp or "",

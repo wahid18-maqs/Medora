@@ -9,7 +9,7 @@ export default function ActionFooter() {
           Share with Doctor
         </button>
       </div>
-      <p className="text-[11px] text-muted-foreground italic">
+      <p className="text-xs text-muted-foreground italic">
         All analyses are for informational purposes only. Consult a healthcare professional.
       </p>
     </div>

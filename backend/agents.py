@@ -24,7 +24,7 @@ gemini_llm = LLM(
 groq_fallback_llm = LLM(
     model="groq/openai/gpt-oss-120b",
     api_key=GROQ_API_KEY,
-    temperature=0.7
+    temperature=0.3
 ) if GROQ_API_KEY else None
 
 llm = gemini_llm if gemini_llm else groq_fallback_llm

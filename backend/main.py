@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import uuid
 import re
+import json
 from dotenv import load_dotenv
 import datetime
 from typing import List, Dict, Any
@@ -10,7 +11,7 @@ from crewai import Crew, Process
 from agents import doctor, verifier, nutritionist, exercise_specialist
 from task import help_patients, verification, nutrition_analysis, exercise_planning
 from db import reports_collection
-from clean_text import strip_markdown
+from clean_text import sanitize_markdown
 from langchain_community.document_loaders import PyPDFLoader
 from auth import router as auth_router
 from profile import router as profile_router, get_current_user_email
@@ -53,6 +54,17 @@ def extract_text_from_pdf(file_path: str) -> str:
 
 from store import IN_MEMORY_REPORTS
 
+def extract_lab_name(text: str) -> str:
+    """Best-effort extraction of a laboratory or diagnostic centre name."""
+    for line in text.splitlines()[:30]:
+        clean = " ".join(line.split()).strip(" :|-")
+        if not (3 <= len(clean) <= 90):
+            continue
+        if re.search(r"\b(lab|laboratory|diagnostics?|pathology|hospital|clinic)\b", clean, re.IGNORECASE):
+            return clean
+    return "Not specified"
+
+
 def parse_markers_from_text(text: str) -> List[Dict[str, Any]]:
 
     """Extract standard blood test markers using flexible regex parsing."""
@@ -91,13 +103,39 @@ def parse_markers_from_text(text: str) -> List[Dict[str, Any]]:
 
     return markers
 
-async def run_crew_async(query: str, report: str):
+def _agent_outputs_from_crew(crew_output) -> Dict[str, str]:
+    task_outputs = getattr(crew_output, "tasks_output", [])
+    return {
+        "medical": str(task_outputs[1]) if len(task_outputs) > 1 else str(crew_output),
+        "verification": str(task_outputs[0]) if len(task_outputs) > 0 else "Verification completed.",
+        "nutrition": str(task_outputs[2]) if len(task_outputs) > 2 else "Nutrition evaluation completed.",
+        "exercise": str(task_outputs[3]) if len(task_outputs) > 3 else "Exercise evaluation completed."
+    }
+
+
+def _marker_findings(markers: List[Dict[str, Any]]) -> str:
+    if not markers:
+        return "No markers could be extracted from this report, so marker-specific findings are unavailable."
+    return "\n".join(
+        f"- **{m['name']}**: {m['value']} {m['unit']} — **{m['status']}** (reference {m['range'][0]}–{m['range'][1]})"
+        for m in markers
+    )
+
+
+async def run_crew_async(query: str, report: str, markers: List[Dict[str, Any]]):
     from agents import gemini_llm, groq_fallback_llm, set_agents_llm
 
-    # Attempt 1: Primary Gemini 3.5 Flash
+    markers_json = json.dumps(markers, indent=2) if markers else "[]"
+    kickoff_inputs = {
+        "query": query,
+        "report": report,
+        "markers_json": markers_json,
+    }
+
+    # Attempt 1: Primary Gemini
     if gemini_llm:
         try:
-            print("Running Crew with Primary Gemini 3.5 Flash...")
+            print("Running Crew with Primary Gemini...")
             set_agents_llm(gemini_llm)
             medical_crew = Crew(
                 agents=[verifier, doctor, nutritionist, exercise_specialist],
@@ -105,21 +143,12 @@ async def run_crew_async(query: str, report: str):
                 process=Process.sequential,
                 verbose=False,
             )
-            crew_output = await medical_crew.kickoff_async({
-                "query": query,
-                "report": report
-            })
-            task_outputs = getattr(crew_output, "tasks_output", [])
-            return {
-                "medical": str(task_outputs[1]) if len(task_outputs) > 1 else str(crew_output),
-                "verification": str(task_outputs[0]) if len(task_outputs) > 0 else "Verification completed.",
-                "nutrition": str(task_outputs[2]) if len(task_outputs) > 2 else "Nutrition evaluation completed.",
-                "exercise": str(task_outputs[3]) if len(task_outputs) > 3 else "Exercise evaluation completed."
-            }
+            crew_output = await medical_crew.kickoff_async(kickoff_inputs)
+            return _agent_outputs_from_crew(crew_output)
         except Exception as gemini_err:
             print("Gemini execution error, attempting fallback to Groq:", str(gemini_err))
 
-    # Attempt 2: Fallback to Groq LLM if Gemini failed or is unavailable
+    # Attempt 2: Fallback to Groq via CrewAI
     if groq_fallback_llm:
         try:
             print("Running Crew with Fallback Groq LLM...")
@@ -130,32 +159,34 @@ async def run_crew_async(query: str, report: str):
                 process=Process.sequential,
                 verbose=False,
             )
-            crew_output = await medical_crew.kickoff_async({
-                "query": query,
-                "report": report
-            })
-            task_outputs = getattr(crew_output, "tasks_output", [])
-            return {
-                "medical": str(task_outputs[1]) if len(task_outputs) > 1 else str(crew_output),
-                "verification": str(task_outputs[0]) if len(task_outputs) > 0 else "Verification completed.",
-                "nutrition": str(task_outputs[2]) if len(task_outputs) > 2 else "Nutrition evaluation completed.",
-                "exercise": str(task_outputs[3]) if len(task_outputs) > 3 else "Exercise evaluation completed."
-            }
+            crew_output = await medical_crew.kickoff_async(kickoff_inputs)
+            return _agent_outputs_from_crew(crew_output)
         except Exception as groq_err:
             print("Groq execution error, running direct specialized LLM generation:", str(groq_err))
 
-    # Attempt 3: Direct LLM generation guarantee
+    # Attempt 3: Direct Groq generation, still constrained to extracted markers
     try:
         import requests
         groq_key = os.getenv("GROQ_API_KEY", "")
         headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+        marker_context = (
+            f"Extracted marker list (authoritative JSON):\n{markers_json}\n\n"
+            f"Blood Report Data:\n{report}"
+        )
+        consistency_rules = (
+            "\n\nRules: only mention tests present in the authoritative marker JSON; "
+            "use the exact Low/Normal/High statuses in that JSON; if the list is short, say the analysis is limited; "
+            "if the list is empty, say no markers were extracted; do not invent findings. "
+            "Return concise markdown with a '## Key findings' section first. "
+            "Do not use a letter, salutation, or sign-off."
+        )
 
-        def query_llm(sys_prompt: str, user_content: str) -> str:
+        def query_llm(sys_prompt: str) -> str:
             payload = {
                 "model": "openai/gpt-oss-20b",
                 "messages": [
-                    {"role": "system", "content": sys_prompt},
-                    {"role": "user", "content": f"Blood Report Data:\n{user_content}"}
+                    {"role": "system", "content": sys_prompt + consistency_rules},
+                    {"role": "user", "content": marker_context}
                 ],
                 "temperature": 0.4
             }
@@ -166,20 +197,16 @@ async def run_crew_async(query: str, report: str):
 
         print("Generating specialized agent analysis via direct Groq pipeline...")
         med = query_llm(
-            "You are a Senior Experienced Doctor. Provide comprehensive medical insights, interpretations of anomalous markers, and clinical follow-up recommendations based strictly on this blood report.",
-            report
+            "You are a Senior Experienced Doctor. Provide medical insight constrained to the extracted markers."
         )
         ver = query_llm(
-            "You are a Blood Report Verifier. Validate the report authenticity, extract key test names, values, units, reference ranges, and note overall completeness.",
-            report
+            "You are a Blood Report Verifier. Produce 3-5 questions the patient should ask their doctor based on the extracted markers, plus a short completeness note."
         )
         nut = query_llm(
-            "You are a Clinical Nutritionist. Provide personalized, evidence-based dietary recommendations, food groups, and nutrient adjustments based on this blood test report.",
-            report
+            "You are a Clinical Nutritionist. Provide nutrition guidance constrained to the extracted markers."
         )
         exe = query_llm(
-            "You are an Exercise Physiologist. Design a structured, safe cardiovascular and strength training plan tailored specifically to the patient's blood markers.",
-            report
+            "You are an Exercise Physiologist. Provide a safe exercise plan constrained to the extracted markers."
         )
 
         if med and ver and nut and exe:
@@ -192,12 +219,13 @@ async def run_crew_async(query: str, report: str):
     except Exception as direct_err:
         print("Direct LLM generation error:", str(direct_err))
 
-    # Static emergency fallback only if network completely down
+    # Static emergency fallback only if network is completely down
+    findings = _marker_findings(markers)
     return {
-        "medical": f"Medical Analysis Summary:\nAnalyzed query '{query}'. Based on laboratory findings, key markers were evaluated.",
-        "verification": "Document verification completed. PDF contains valid blood report structure.",
-        "nutrition": "Nutrition Recommendations:\n- Optimize diet according to extracted glucose and lipid markers.\n- Consider nutritional supplementation if deficiencies exist.",
-        "exercise": "Exercise Plan:\n- 150 minutes of moderate cardio weekly.\n- Include resistance training 2 days per week."
+        "medical": f"## Key findings\n{findings}\n\n## Medical interpretation\nReview these findings with a clinician; no network model was available for deeper interpretation.",
+        "verification": f"## Questions for your doctor\n{findings}\n\nAsk your clinician to review the status of each extracted marker above.",
+        "nutrition": f"## Key findings\n{findings}\n\n## Nutrition guidance\nBase any dietary changes on the markers above and confirm them with your clinician.",
+        "exercise": f"## Key findings\n{findings}\n\n## Exercise plan\nChoose activity appropriate for the markers above and confirm safety with your clinician."
     }
 
 # Root health check
@@ -232,10 +260,21 @@ async def analyze_blood_report(
                 "message": "The PDF appears to be empty or unreadable."
             }
 
-        # Process with CrewAI async sequential agents
-        agent_outputs = await run_crew_async(query=query.strip(), report=report_text)
-        agent_outputs = {key: strip_markdown(value) for key, value in agent_outputs.items()}
+        # Extract markers first so every AI prompt is constrained to the same list.
         markers = parse_markers_from_text(report_text)
+        marker_warning = None
+        if len(markers) == 1:
+            marker_warning = "Only 1 marker could be read from this report. Results may be incomplete."
+        elif len(markers) == 0:
+            marker_warning = "No markers could be read from this report. Results may be incomplete."
+
+        # Process with CrewAI async sequential agents
+        agent_outputs = await run_crew_async(
+            query=query.strip(),
+            report=report_text,
+            markers=markers,
+        )
+        agent_outputs = {key: sanitize_markdown(value) for key, value in agent_outputs.items()}
 
         now = datetime.datetime.utcnow()
         # Generate stable Analysis ID format #BTA-YYYY-NNN at insert time
@@ -249,7 +288,7 @@ async def analyze_blood_report(
 
         # TODO: Classify report_type based on PDF content analysis (e.g. Routine, Comprehensive, Specialized)
         report_type = "Routine"
-        diagnostic_center = "Unknown"  # Default unless provided or extracted
+        diagnostic_center = extract_lab_name(report_text)
 
         doc = {
             "analysis_id": analysis_id,
@@ -261,6 +300,7 @@ async def analyze_blood_report(
             "analysis": agent_outputs["medical"],
             "agents": agent_outputs,
             "markers": markers,
+            "marker_warning": marker_warning,
             "file_name": file.filename,
             "timestamp": now.isoformat()
         }
@@ -281,7 +321,9 @@ async def analyze_blood_report(
             "analysis": agent_outputs["medical"],
             "agents": agent_outputs,
             "markers": markers,
-            "file_processed": file.filename
+            "marker_warning": marker_warning,
+            "file_processed": file.filename,
+            "timestamp": now.isoformat()
         }
 
     except Exception as e:
@@ -334,7 +376,8 @@ async def get_history(
             history_items.append({
                 "analysis_id": r.get("analysis_id", "BTA-2026-001"),
                 "report_type": r.get("report_type", "Routine"),
-                "diagnostic_center": r.get("diagnostic_center", "Unknown"),
+                "diagnostic_center": r.get("diagnostic_center", "Not specified"),
+                "marker_warning": r.get("marker_warning"),
                 "status": r.get("status", "Completed - Reviewed"),
                 "file": r.get("file_name"),
                 "query": r.get("query"),
@@ -372,7 +415,8 @@ async def get_history(
             history_items.append({
                 "analysis_id": r.get("analysis_id", f"BTA-2026-{seq:03d}"),
                 "report_type": r.get("report_type", "Routine"),
-                "diagnostic_center": r.get("diagnostic_center", "Unknown"),
+                "diagnostic_center": r.get("diagnostic_center", "Not specified"),
+                "marker_warning": r.get("marker_warning"),
                 "status": r.get("status", "Completed - Reviewed"),
                 "file": r.get("file_name"),
                 "query": r.get("query"),

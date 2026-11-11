@@ -44,6 +44,10 @@ export default function ReportsHistoryPage() {
       date: formattedDate,
       title: item.query || "Blood Test Analysis",
       source: item.file,
+      reportType: item.report_type,
+      diagnosticCenter: item.diagnostic_center,
+      markerWarning: item.marker_warning,
+      timestamp: item.timestamp,
       agents: item.agents || {
         medical: item.analysis,
         verification: "",

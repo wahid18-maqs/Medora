@@ -7,6 +7,7 @@ export interface HistoryItem {
   analysis_id?: string;
   report_type?: string;
   diagnostic_center?: string;
+  marker_warning?: string | null;
   status?: string;
   file: string;
   query: string;
@@ -42,6 +43,10 @@ export interface AnalysisResult {
   date: string;
   title: string;
   source: string;
+  reportType?: string;
+  diagnosticCenter?: string;
+  markerWarning?: string | null;
+  timestamp?: string;
   agents: {
     medical: string;
     verification: string;

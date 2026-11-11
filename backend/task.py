@@ -4,74 +4,104 @@ from tools import search_tool, blood_test_tool,nutrition_tool, exercise_tool
 
 ## Creating a task to help solve user's query
 help_patients = Task(
-    description="Interpret the patient's health-related query based on their blood test report data below.\n\
+    description="Interpret the patient's health-related query using ONLY the extracted marker list and report text below.\n\
+Extracted marker list (authoritative JSON):\n{markers_json}\n\n\
 Blood Test Report Data:\n{report}\n\n\
 Query: {query}\n\n\
-Identify any anomalies and respond with thoughtful, evidence-based medical insights based on these findings.",
+Rules:\n\
+1. Only mention tests that appear in the extracted marker list above. Never mention a test that is absent from that list.\n\
+2. Use the exact status values from the JSON (Low, Normal, High). Do not contradict them.\n\
+3. If the list contains only a few markers, say clearly that the analysis is limited to those markers.\n\
+4. If the list is empty, state that no markers could be extracted and do not invent findings.\n\
+5. Do not write a letter, salutation, or sign-off. Return concise markdown with a '## Key findings' section first.",
 
-    expected_output="""Your response should include:
-- A brief summary of key findings from the blood report
-- Interpretation of any unusual markers or results
-- Personalized health suggestions or medical advice
-- Recommended next steps or clinical follow-up""",
+    expected_output="""Markdown only, with:
+## Key findings
+- A short bullet list of the extracted markers and their exact statuses
+## Medical interpretation
+- Evidence-based interpretation limited to those markers
+## Next steps
+- Clinical follow-up suggestions based only on the extracted markers""",
 
     agent=doctor,
     tools=[nutrition_tool, exercise_tool],
-    input_variables=["query", "report"],
+    input_variables=["query", "report", "markers_json"],
     async_execution=False,
 )
 
 ## Creating a nutrition analysis task
 nutrition_analysis = Task(
-    description="Evaluate the patient's blood test report data below to determine dietary adjustments.\n\
+    description="Evaluate the patient's extracted blood markers below to determine dietary adjustments.\n\
+Extracted marker list (authoritative JSON):\n{markers_json}\n\n\
 Blood Test Report Data:\n{report}\n\n\
-Focus on markers like glucose, lipids, vitamin levels, and iron to suggest nutrition strategies.\n\
-Address any deficiencies or risks using evidence-based diet planning.",
+Rules:\n\
+1. Only discuss nutrients and tests present in the extracted marker list above.\n\
+2. Match the exact status values in the JSON and do not claim a normal marker is abnormal or vice versa.\n\
+3. If only a few markers were extracted, state that the nutrition guidance is limited to those markers.\n\
+4. If the list is empty, say that no marker-specific nutrition guidance can be provided.\n\
+5. Do not write a letter, salutation, or sign-off. Return concise markdown with a '## Key findings' section first.",
 
-    expected_output="""Include the following in the response:
-- Nutritional deficiencies or imbalances detected
-- Recommended foods or dietary changes to address those
-- Suggested supplements if necessary
-- Example meals or food groups""",
+    expected_output="""Markdown only, with:
+## Key findings
+- Extracted markers relevant to nutrition and their exact statuses
+## Nutrition guidance
+- Foods, dietary changes, or supplements tied only to those markers
+## Practical next steps
+- Brief, evidence-based actions""",
 
     agent=nutritionist,
     tools=[nutrition_tool],
-    input_variables=["report"],
+    input_variables=["report", "markers_json"],
     async_execution=False,
 )
 
 ## Creating an exercise planning task
 exercise_planning = Task(
-    description="Design an exercise routine tailored to the patient's health status as reflected in their blood report data below.\n\
+    description="Design an exercise routine based ONLY on the extracted markers and report text below.\n\
+Extracted marker list (authoritative JSON):\n{markers_json}\n\n\
 Blood Test Report Data:\n{report}\n\n\
-Consider cardiovascular health, metabolic markers, and overall fitness when creating the plan.",
+Rules:\n\
+1. Only mention markers present in the extracted marker list above.\n\
+2. Use the exact status values from the JSON and do not contradict them.\n\
+3. If only a few markers were extracted, state that the exercise guidance is limited to those markers.\n\
+4. If the list is empty, say that no marker-specific exercise guidance can be provided.\n\
+5. Do not write a letter, salutation, or sign-off. Return concise markdown with a '## Key findings' section first.",
 
-    expected_output="""Your response should cover:
-- Appropriate exercise types (e.g., cardio, strength, flexibility)
-- Frequency and intensity recommendations
-- Safety notes or health conditions to consider
-- Progress tracking suggestions""",
+    expected_output="""Markdown only, with:
+## Key findings
+- Extracted markers relevant to exercise and their exact statuses
+## Exercise plan
+- Appropriate exercise types, frequency, and intensity
+## Safety notes
+- Precautions tied only to the extracted markers""",
 
     agent=exercise_specialist,
     tools=[exercise_tool],
-    input_variables=["report"],
+    input_variables=["report", "markers_json"],
     async_execution=False,
 )
 
 ## Creating a verification task
 verification = Task(
-    description="Verify whether the blood test report data below is a valid, authentic laboratory report.\n\
+    description="Prepare questions the patient should ask their doctor, using ONLY the extracted markers and report text below.\n\
+Extracted marker list (authoritative JSON):\n{markers_json}\n\n\
 Blood Test Report Data:\n{report}\n\n\
-Evaluate the test names, measured values, units, and reference ranges present in the text.",
+Rules:\n\
+1. Only mention tests that appear in the extracted marker list above.\n\
+2. Use the exact status values from the JSON (Low, Normal, High).\n\
+3. If only one marker was extracted, explicitly note that the review is limited to that marker.\n\
+4. If the list is empty, state that no marker-specific questions can be generated.\n\
+5. Do not write a letter, salutation, or sign-off. Return concise markdown.",
 
-    expected_output="""Provide:
-- Validation status (Valid/Invalid)
-- Key medical values and units extracted
-- Completeness and clarity notes""",
+    expected_output="""Markdown only, with:
+## Questions for your doctor
+- 3 to 5 concise, clinically relevant questions based strictly on the extracted markers
+## Report completeness
+- Brief note on whether the extracted marker list appears limited or complete""",
 
     agent=verifier,
     tools=[],
-    input_variables=["report"],
+    input_variables=["report", "markers_json"],
     async_execution=False
 )
 

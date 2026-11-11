@@ -29,7 +29,9 @@ export interface AnalyzeResponse {
     exercise: string;
   };
   markers: Marker[];
+  marker_warning?: string | null;
   file_processed: string;
+  timestamp?: string;
 }
 
 async function requestBlob(path: string, init?: RequestInit): Promise<Blob> {

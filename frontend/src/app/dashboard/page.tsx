@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AlertTriangle, Bot } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 import PageContainer from "@/components/layout/PageContainer";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import UploadHero from "@/components/dashboard/UploadHero";
 import KeyMetricsStrip from "@/components/dashboard/KeyMetricsStrip";
 import BentoDashboardGrid from "@/components/dashboard/BentoDashboardGrid";
+import ResultsSkeleton from "@/components/dashboard/ResultsSkeleton";
 import ContextualChatPanel from "@/components/analysis/ContextualChatPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
@@ -22,6 +24,10 @@ function toAnalysisResult(item: HistoryItem): AnalysisResult {
     date: formattedDate,
     title: item.query || "Blood Test Analysis",
     source: item.file,
+    reportType: item.report_type,
+    diagnosticCenter: item.diagnostic_center,
+    markerWarning: item.marker_warning,
+    timestamp: item.timestamp,
     agents: item.agents || {
       medical: item.analysis,
       verification: "",
@@ -62,7 +68,7 @@ export default function DashboardPage() {
         if (cancelled) return;
         setActiveResult(toAnalysisResult(item));
         setUploadStatus("ready");
-        setIsChatOpen(true);
+        setIsChatOpen(false);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -82,76 +88,63 @@ export default function DashboardPage() {
   const handleAnalyzed = (result: AnalysisResult) => {
     setActiveResult(result);
     setUploadStatus("ready");
+    setIsChatOpen(false);
     clearAnalysisParam();
-    // Keep chat closed by default; user opens it via the left sidebar "AI Assistant" item
   };
 
-  const handleReset = () => {
-    setActiveResult(null);
-    setUploadStatus("empty");
-    setIsChatOpen(false);
-    setRestoreError(null);
-    clearAnalysisParam();
-  };
+  const markerWarning =
+    activeResult?.markerWarning ||
+    (activeResult?.markers.length === 1
+      ? "Only 1 marker could be read from this report. Results may be incomplete."
+      : null);
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* 1. Collapsible Navigation Sidebar */}
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar
         activeHref="/dashboard"
         isChatOpen={isChatOpen}
         onToggleChat={() => setIsChatOpen((prev) => !prev)}
       />
 
-      {/* 2. Main Scrollable Content Area (Reflows when contextual assistant is opened) */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         <PageContainer width="full">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <DashboardHeader name={user?.name ?? "there"} />
-            {activeResult && (
-              <button
-                onClick={handleReset}
-                className="text-xs font-medium text-muted-foreground hover:text-foreground bg-card border border-border px-3 py-1.5 rounded-lg shadow-xs cursor-pointer"
-              >
-                New Analysis
-              </button>
+          <div className="mx-auto w-full max-w-5xl">
+            <DashboardHeader name={user?.name ?? "there"} hasResult={Boolean(activeResult) && uploadStatus === "ready"} />
+
+            {restoreError && (
+              <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
+                {restoreError}
+              </div>
             )}
-          </div>
 
-          {/* Restore status for a session opened from History */}
-          {restoreError && (
-            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg text-xs">
-              {restoreError}
-            </div>
-          )}
-
-          {/* Centered dashboard content column: upload, status, and results share one width. */}
-          <div className="mx-auto mt-10 w-full max-w-6xl">
-            {/* 1. Progressive Disclosure: State-Driven Upload Hero */}
             {isRestoring ? (
-              <div className="mx-auto w-full max-w-2xl rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-xs sm:p-10">
+              <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-xs sm:p-10">
                 Loading saved analysis session...
               </div>
             ) : (
-              <div className="flex w-full justify-center">
-                <UploadHero
-                  status={uploadStatus}
-                  setStatus={setUploadStatus}
-                  onAnalyzed={handleAnalyzed}
-                  currentFileName={activeResult?.source}
-                  onReset={handleReset}
-                />
+              <UploadHero
+                status={uploadStatus}
+                setStatus={setUploadStatus}
+                onAnalyzed={handleAnalyzed}
+                result={activeResult}
+              />
+            )}
+
+            {uploadStatus === "analyzing" && <ResultsSkeleton />}
+
+            {markerWarning && uploadStatus === "ready" && !isRestoring && (
+              <div
+                role="status"
+                className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs font-medium text-amber-800 dark:text-amber-300"
+              >
+                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                <span>{markerWarning}</span>
               </div>
             )}
 
-            {/* Render Inverted Pyramid & Bento Grid only when Ready */}
             {activeResult && uploadStatus === "ready" && (
-              <div className="mt-8 space-y-6 animate-in fade-in duration-300">
-                {/* 2. Inverted Pyramid: Key Metrics Strip at the top */}
+              <div className="mt-6 animate-in space-y-6 fade-in duration-300">
                 <KeyMetricsStrip markers={activeResult.markers} />
-
-                {/* 3. Bento Grid: Hero Data Table + Multi-Agent Findings */}
                 <BentoDashboardGrid result={activeResult} />
               </div>
             )}
@@ -159,10 +152,21 @@ export default function DashboardPage() {
         </PageContainer>
       </div>
 
-      {/* 4. Master-Detail Contextual AI Assistant Panel (Main area reflows) */}
+      {activeResult && !isChatOpen && (
+        <button
+          type="button"
+          onClick={() => setIsChatOpen(true)}
+          className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition-transform hover:scale-105 print:hidden cursor-pointer"
+        >
+          <Bot size={18} />
+          Ask AI
+        </button>
+      )}
+
       {activeResult && (
         <ContextualChatPanel
           reportId={activeResult.id}
+          markers={activeResult.markers}
           isOpen={isChatOpen}
           onClose={() => setIsChatOpen(false)}
         />
@@ -170,4 +174,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

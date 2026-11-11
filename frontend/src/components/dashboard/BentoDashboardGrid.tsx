@@ -35,7 +35,7 @@ export default function BentoDashboardGrid({ result }: BentoDashboardGridProps) 
 
       {/* 2. Recommendations Tabs */}
       <div className="bg-card border border-border rounded-2xl p-6 shadow-xs">
-        <RecommendationTabs agents={result.agents} />
+        <RecommendationTabs agents={result.agents} markers={result.markers} />
       </div>
     </div>
   );

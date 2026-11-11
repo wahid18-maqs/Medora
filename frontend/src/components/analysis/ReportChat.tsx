@@ -1,19 +1,44 @@
 "use client";
 
 import { useState, useRef, useEffect, FormEvent } from "react";
-import { Send, Mic, RefreshCw, Loader2, Bot, User } from "lucide-react";
+import { Send, Mic, RefreshCw, Loader2, Bot, User, Sparkles } from "lucide-react";
 import { useReportChat } from "@/hooks/useReportChat";
 import { stripMarkdown } from "@/lib/utils";
+import type { Marker } from "@/lib/types";
 
 interface ReportChatProps {
   reportId: string;
+  markers?: Marker[];
 }
 
-export default function ReportChat({ reportId }: ReportChatProps) {
+export default function ReportChat({ reportId, markers = [] }: ReportChatProps) {
   const { messages, isLoading, isError, sendMessage, isSending } = useReportChat(reportId);
   const [inputText, setInputText] = useState("");
   const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  const flaggedMarkers = markers.filter((marker) => marker.status !== "Normal");
+  const suggestions = Array.from(
+    new Set(
+      flaggedMarkers.length > 0
+        ? [
+            ...flaggedMarkers
+              .slice(0, 3)
+              .map(
+                (marker) =>
+                  `What does my ${marker.name} result (${marker.status.toLowerCase()}) mean?`
+              ),
+            "What should I ask my doctor about these markers?",
+            "How can I improve these results?",
+          ]
+        : [
+            "What are the main findings in my report?",
+            "Are any of my markers out of range?",
+            "What should I ask my doctor?",
+            "How can I improve these results?",
+          ]
+    )
+  ).slice(0, 4);
 
   const scrollToBottom = () => {
     const container = messagesContainerRef.current;
@@ -67,12 +92,30 @@ export default function ReportChat({ reportId }: ReportChatProps) {
           )}
 
           {!isLoading && !isError && messages.length === 0 && (
-            <div className="flex flex-1 flex-col items-center justify-center px-4 text-center text-sm text-muted-foreground">
-              <Bot size={32} className="mb-2 text-muted-foreground/60" />
+            <div className="flex flex-1 flex-col items-center justify-center px-2 text-center text-sm text-muted-foreground">
+              <Bot size={32} className="mb-2 text-muted-foreground/70" />
               <p className="font-medium text-foreground">Have questions about this report?</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 Ask any question below to get answers grounded specifically in your test results.
               </p>
+
+              <div className="mt-5 grid w-full max-w-sm gap-2 text-left">
+                <p className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Sparkles size={13} className="text-amber-500" />
+                  Suggested questions
+                </p>
+                {suggestions.map((question) => (
+                  <button
+                    key={question}
+                    type="button"
+                    onClick={() => handleSend(question)}
+                    disabled={isSending}
+                    className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-left text-xs leading-relaxed text-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -100,7 +143,7 @@ export default function ReportChat({ reportId }: ReportChatProps) {
                   </p>
                   {msg.timestamp && (
                     <span
-                      className={`block text-[10px] mt-1 ${
+                      className={`block text-xs mt-1 ${
                         isUser ? "text-primary-foreground/70 text-right" : "text-muted-foreground"
                       }`}
                     >

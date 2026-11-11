@@ -28,7 +28,7 @@ export default function KeyMetricsStrip({ markers }: KeyMetricsStripProps) {
             {total === 0 ? "No Markers" : flaggedCount === 0 ? "Optimal" : `${flaggedCount} Out of Range`}
           </span>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1">Based on {total} evaluated test markers</p>
+        <p className="text-xs text-muted-foreground mt-1">Based on {total} evaluated test markers</p>
       </div>
 
       {/* 2. Normal Markers Card */}
@@ -41,7 +41,7 @@ export default function KeyMetricsStrip({ markers }: KeyMetricsStripProps) {
           <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{normalCount}</span>
           <span className="text-xs text-muted-foreground">/ {total} markers</span>
         </div>
-        <p className="text-[11px] text-emerald-600 dark:text-emerald-400/80 mt-1 font-medium">
+        <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1 font-medium">
           {normalPercent}% within normal reference
         </p>
       </div>
@@ -56,7 +56,7 @@ export default function KeyMetricsStrip({ markers }: KeyMetricsStripProps) {
           <span className="text-xl font-bold text-red-600 dark:text-red-400">{highCount}</span>
           <span className="text-xs text-muted-foreground">flagged high</span>
         </div>
-        <p className="text-[11px] text-red-500 dark:text-red-400/80 mt-1">
+        <p className="text-xs text-red-700 dark:text-red-400 mt-1">
           {highCount > 0 ? "Requires dietary or follow-up review" : "No elevated indicators"}
         </p>
       </div>
@@ -71,7 +71,7 @@ export default function KeyMetricsStrip({ markers }: KeyMetricsStripProps) {
           <span className="text-xl font-bold text-blue-600 dark:text-blue-400">{lowCount}</span>
           <span className="text-xs text-muted-foreground">below reference</span>
         </div>
-        <p className="text-[11px] text-blue-600 dark:text-blue-400/80 mt-1">
+        <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
           {lowCount > 0 ? "Nutritional supplementation advised" : "No low deficiencies"}
         </p>
       </div>

@@ -12,3 +12,15 @@ def strip_markdown(text: str) -> str:
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def sanitize_markdown(text: str) -> str:
+    """Keep safe markdown formatting while removing executable HTML."""
+    if not text:
+        return text
+
+    text = re.sub(r"<script\b[^>]*>.*?</script>", "", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<style\b[^>]*>.*?</style>", "", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = text.replace("\x00", "")
+    return text.strip()

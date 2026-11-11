@@ -26,7 +26,7 @@ export default function RangeGauge({ value, range, status, unit }: RangeGaugePro
 
   // Responsive gauge dimensions (scales with the SVG viewBox)
   const viewBoxWidth = 160;
-  const viewBoxHeight = 116;
+  const viewBoxHeight = 130;
   const cx = 80;
   const cy = 82;
   const r = 64;
@@ -155,9 +155,10 @@ export default function RangeGauge({ value, range, status, unit }: RangeGaugePro
         {/* Reference range end labels */}
         <text
           x={cx - r}
-          y={96}
+          y={104}
           textAnchor="middle"
-          fontSize={8.5}
+          fontSize={12}
+          fontWeight={500}
           fill="currentColor"
           className="text-muted-foreground"
         >
@@ -165,9 +166,10 @@ export default function RangeGauge({ value, range, status, unit }: RangeGaugePro
         </text>
         <text
           x={cx + r}
-          y={96}
+          y={104}
           textAnchor="middle"
-          fontSize={8.5}
+          fontSize={12}
+          fontWeight={500}
           fill="currentColor"
           className="text-muted-foreground"
         >
@@ -177,14 +179,18 @@ export default function RangeGauge({ value, range, status, unit }: RangeGaugePro
         {/* Measured value */}
         <text
           x={cx}
-          y={112}
+          y={124}
           textAnchor="middle"
-          fontSize={15}
           fontWeight={700}
           fill="currentColor"
           className="text-foreground"
         >
-          {displayValue}
+          <tspan fontSize={16}>{value}</tspan>
+          {unit ? (
+            <tspan fontSize={12} fontWeight={500} fill="currentColor" className="text-muted-foreground">
+              {" "}{unit}
+            </tspan>
+          ) : null}
         </text>
       </svg>
     </div>
