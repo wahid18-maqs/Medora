@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2 } from "lucide-react";
+import { Pill } from "lucide-react";
+import CardEditButton from "./CardEditButton";
+import CardEmptyState from "./CardEmptyState";
 import EditableCardModal, { FieldConfig } from "./EditableCardModal";
 import type { HealthProfile } from "@/lib/types";
 
@@ -28,42 +30,40 @@ export default function CurrentMedicationsCard({
     .join("\n");
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-primary-dark">Current Medications</h3>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary-dark hover:bg-muted px-2.5 py-1.5 rounded-lg border border-border transition-colors cursor-pointer"
-        >
-          <Edit2 size={13} />
-          Edit Info
-        </button>
+    <div className="flex h-full min-h-[240px] flex-col rounded-xl border border-border bg-card p-6 shadow-sm lg:p-8">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h3 className="text-lg font-semibold text-primary-dark">Current Medications</h3>
+        <CardEditButton onClick={() => setIsEditing(true)} ariaLabel="Edit current medications" />
       </div>
 
-      <div className="overflow-x-auto">
-        {profile.medications.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic py-2">No current medications listed.</p>
-        ) : (
-          <table className="w-full text-xs text-left">
+      {profile.medications.length === 0 ? (
+        <CardEmptyState
+          icon={Pill}
+          message="No medications added yet."
+          onAdd={() => setIsEditing(true)}
+        />
+      ) : (
+        <div className="flex-1 overflow-x-auto">
+          <table className="w-full min-w-[320px] text-left text-sm">
             <thead>
-              <tr className="text-muted-foreground border-b border-border">
-                <th className="font-medium pb-2">Medication</th>
-                <th className="font-medium pb-2">Dosage</th>
-                <th className="font-medium pb-2">Schedule</th>
+              <tr className="border-b border-border text-xs text-muted-foreground">
+                <th className="pb-2 font-medium">Medication</th>
+                <th className="pb-2 font-medium">Dosage</th>
+                <th className="pb-2 font-medium">Schedule</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {profile.medications.map((med, idx) => (
                 <tr key={med.id || idx}>
-                  <td className="py-2.5 font-semibold text-foreground">{med.name}</td>
-                  <td className="py-2.5 text-foreground">{med.dosage}</td>
-                  <td className="py-2.5 text-muted-foreground">{med.schedule}</td>
+                  <td className="py-3 font-semibold text-foreground">{med.name}</td>
+                  <td className="py-3 text-foreground">{med.dosage}</td>
+                  <td className="py-3 text-[13px] text-muted-foreground">{med.schedule}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
 
       <EditableCardModal
         title="Current Medications"

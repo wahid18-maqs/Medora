@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2, Phone, Mail, ShieldAlert, Shield } from "lucide-react";
+import { Mail, Phone, Shield, ShieldAlert } from "lucide-react";
+import CardEditButton from "./CardEditButton";
 import EditableCardModal, { FieldConfig } from "./EditableCardModal";
 import type { HealthProfile } from "@/lib/types";
+
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined) return "Not provided";
+  const text = String(value).trim();
+  return text || "Not provided";
+}
 
 export default function ContactInsuranceCard({
   profile,
@@ -23,48 +30,72 @@ export default function ContactInsuranceCard({
     { key: "insuranceMemberId", label: "Member ID" },
   ];
 
+  const phone = displayValue(profile.phone);
+  const email = displayValue(profile.email);
+  const emergencyName = displayValue(profile.emergencyContact.name);
+  const emergencyPhone = String(profile.emergencyContact.phone || "").trim();
+  const insuranceProvider = displayValue(profile.insurance.provider);
+  const insuranceMemberId = displayValue(profile.insurance.memberId);
+
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-primary-dark">Contact & Insurance</h3>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary-dark hover:bg-muted px-2.5 py-1.5 rounded-lg border border-border transition-colors cursor-pointer"
-        >
-          <Edit2 size={13} />
-          Edit Info
-        </button>
+    <div className="flex h-full min-h-[240px] flex-col rounded-xl border border-border bg-card p-6 shadow-sm lg:p-8">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h3 className="text-lg font-semibold text-primary-dark">Contact &amp; Insurance</h3>
+        <CardEditButton onClick={() => setIsEditing(true)} ariaLabel="Edit contact and insurance" />
       </div>
 
-      <div className="space-y-3 text-sm">
-        <div className="flex items-center gap-2.5 text-foreground">
-          <Phone size={15} className="text-muted-foreground shrink-0" />
-          <span>{profile.phone}</span>
-        </div>
-        <div className="flex items-center gap-2.5 text-foreground">
-          <Mail size={15} className="text-muted-foreground shrink-0" />
-          <span className="truncate">{profile.email}</span>
+      <div className="flex-1 space-y-4 text-sm">
+        <div className="flex items-center gap-2.5">
+          <Phone size={16} className="shrink-0 text-muted-foreground" />
+          <span className={phone === "Not provided" ? "text-muted-foreground" : "text-foreground"}>
+            {phone === "Not provided" ? "Add phone number" : phone}
+          </span>
         </div>
 
-        <div className="pt-3 border-t border-border">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-1">
-            <ShieldAlert size={14} className="text-amber-500" />
+        <div className="flex items-center gap-2.5">
+          <Mail size={16} className="shrink-0 text-muted-foreground" />
+          <span
+            className={`truncate ${
+              email === "Not provided" ? "text-muted-foreground" : "text-foreground"
+            }`}
+          >
+            {email}
+          </span>
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <div className="mb-1.5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <ShieldAlert size={14} className="text-destructive" />
             <span>Emergency Contact</span>
           </div>
-          <p className="text-xs font-semibold text-foreground">
-            {profile.emergencyContact.name}{" "}
-            <span className="font-normal text-muted-foreground">({profile.emergencyContact.phone})</span>
-          </p>
+          {emergencyName === "Not provided" ? (
+            <p className="text-sm font-semibold text-muted-foreground">
+              {emergencyPhone || "Not provided"}
+            </p>
+          ) : (
+            <p className="text-sm font-semibold text-foreground">
+              {emergencyName}
+              {emergencyPhone && (
+                <span className="ml-1 font-normal text-muted-foreground">({emergencyPhone})</span>
+              )}
+            </p>
+          )}
         </div>
 
-        <div className="pt-3 border-t border-border">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-1">
-            <Shield size={14} className="text-primary-dark" />
+        <div className="border-t border-border pt-4">
+          <div className="mb-1.5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Shield size={14} className="text-primary" />
             <span>Insurance</span>
           </div>
-          <p className="text-xs font-semibold text-foreground">
-            {profile.insurance.provider}{" "}
-            <span className="font-mono text-muted-foreground">ID: {profile.insurance.memberId}</span>
+          <p
+            className={`text-sm font-semibold ${
+              insuranceProvider === "Not provided" ? "text-muted-foreground" : "text-foreground"
+            }`}
+          >
+            {insuranceProvider}
+          </p>
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
+            ID: {insuranceMemberId}
           </p>
         </div>
       </div>

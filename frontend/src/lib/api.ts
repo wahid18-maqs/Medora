@@ -90,12 +90,6 @@ export const api = {
     }),
   exportData: () => requestBlob("/settings/export"),
   deleteAccount: () => request<{ status: string }>("/settings/account", { method: "DELETE" }),
-  submitSupportRequest: (data: { subject: string; message: string }) =>
-    request<{ status: string; request_id?: string }>("/support/requests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }),
   getReport: (reportId: string) =>
     request<HistoryItem>(`/reports/${encodeURIComponent(reportId)}`),
   getChatHistory: (reportId: string) =>

@@ -1,9 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2 } from "lucide-react";
+import CardEditButton from "./CardEditButton";
 import EditableCardModal, { FieldConfig } from "./EditableCardModal";
 import type { HealthProfile } from "@/lib/types";
+
+function VitalTile({
+  label,
+  value,
+  fallback = "Not set",
+}: {
+  label: string;
+  value: string;
+  fallback?: string;
+}) {
+  const isEmpty = value === fallback;
+
+  return (
+    <div className="flex min-h-[104px] flex-col justify-between rounded-xl border border-border bg-muted p-4">
+      <span className="text-[13px] leading-snug text-muted-foreground">{label}</span>
+      <span
+        className={`mt-3 text-xl font-bold leading-tight ${
+          isEmpty ? "text-muted-foreground" : "text-foreground"
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 export default function BasicVitalsCard({
   profile,
@@ -15,11 +40,32 @@ export default function BasicVitalsCard({
   const [isEditing, setIsEditing] = useState(false);
 
   const vitals = profile.vitals;
-
-  // Compute BMI dynamically from weight (kg) and height (cm)
   const weightKg = Number(vitals.weight) || 0;
-  const heightM = (Number(vitals.height) || 0) / 100;
-  const computedBMI = heightM > 0 ? (weightKg / (heightM * heightM)).toFixed(1) : "--";
+  const heightCm = Number(vitals.height) || 0;
+  const heightM = heightCm / 100;
+  const systolicBP = Number(vitals.systolicBP) || 0;
+  const diastolicBP = Number(vitals.diastolicBP) || 0;
+  const heartRate = Number(vitals.restingHeartRate) || 0;
+
+  const computedBMI =
+    heightM > 0 && weightKg > 0 ? (weightKg / (heightM * heightM)).toFixed(1) : null;
+
+  const weightHeight =
+    weightKg > 0 || heightCm > 0
+      ? `${weightKg > 0 ? `${weightKg} kg` : "Not set"} / ${
+          heightCm > 0 ? `${heightCm} cm` : "Not set"
+        }`
+      : "Not set";
+
+  const bloodPressure =
+    systolicBP > 0 || diastolicBP > 0
+      ? `${systolicBP > 0 ? systolicBP : "--"}/${diastolicBP > 0 ? diastolicBP : "--"} mmHg`
+      : "Not set";
+
+  const bloodTypeHeartRate =
+    (vitals.bloodType || "").trim() || heartRate > 0
+      ? `${(vitals.bloodType || "").trim() || "Not set"} | ${heartRate > 0 ? `${heartRate} bpm` : "Not set"}`
+      : "Not set";
 
   const fields: FieldConfig[] = [
     { key: "weight", label: "Weight (kg)", type: "number" },
@@ -31,44 +77,21 @@ export default function BasicVitalsCard({
   ];
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-primary-dark">Basic Vitals</h3>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary-dark hover:bg-muted px-2.5 py-1.5 rounded-lg border border-border transition-colors cursor-pointer"
-        >
-          <Edit2 size={13} />
-          Edit Info
-        </button>
+    <div className="flex h-full min-h-[240px] flex-col rounded-xl border border-border bg-card p-6 shadow-sm lg:p-8">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h3 className="text-lg font-semibold text-primary-dark">Basic Vitals</h3>
+        <CardEditButton onClick={() => setIsEditing(true)} ariaLabel="Edit basic vitals" />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-muted p-3 rounded-lg border border-border">
-          <span className="block text-xs text-muted-foreground">Weight & Height</span>
-          <span className="text-sm font-semibold text-foreground">
-            {vitals.weight} kg / {vitals.height} cm
-          </span>
-        </div>
-
-        <div className="bg-muted p-3 rounded-lg border border-border">
-          <span className="block text-xs text-muted-foreground">Computed BMI</span>
-          <span className="text-sm font-semibold text-primary-dark">{computedBMI} kg/m²</span>
-        </div>
-
-        <div className="bg-muted p-3 rounded-lg border border-border">
-          <span className="block text-xs text-muted-foreground">Blood Pressure</span>
-          <span className="text-sm font-semibold text-foreground">
-            {vitals.systolicBP}/{vitals.diastolicBP} mmHg
-          </span>
-        </div>
-
-        <div className="bg-muted p-3 rounded-lg border border-border">
-          <span className="block text-xs text-muted-foreground">Blood Type & Heart Rate</span>
-          <span className="text-sm font-semibold text-foreground">
-            {vitals.bloodType} | {vitals.restingHeartRate} bpm
-          </span>
-        </div>
+      <div className="grid flex-1 grid-cols-2 gap-4">
+        <VitalTile label="Weight & Height" value={weightHeight} />
+        <VitalTile
+          label="Computed BMI"
+          value={computedBMI ? `${computedBMI} kg/m²` : "--"}
+          fallback="--"
+        />
+        <VitalTile label="Blood Pressure" value={bloodPressure} />
+        <VitalTile label="Blood Type & Heart Rate" value={bloodTypeHeartRate} />
       </div>
 
       <EditableCardModal

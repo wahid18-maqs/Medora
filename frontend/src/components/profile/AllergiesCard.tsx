@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2 } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
+import CardEditButton from "./CardEditButton";
+import CardEmptyState from "./CardEmptyState";
 import EditableCardModal, { FieldConfig } from "./EditableCardModal";
 import type { HealthProfile } from "@/lib/types";
 
@@ -24,32 +26,31 @@ export default function AllergiesCard({
   ];
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-primary-dark">Allergies</h3>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="p-1.5 text-muted-foreground hover:text-primary-dark hover:bg-muted rounded-lg transition-colors cursor-pointer"
-          title="Edit Allergies"
-        >
-          <Edit2 size={15} />
-        </button>
+    <div className="flex h-full min-h-[240px] flex-col rounded-xl border border-border bg-card p-6 shadow-sm lg:p-8">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h3 className="text-lg font-semibold text-primary-dark">Allergies</h3>
+        <CardEditButton onClick={() => setIsEditing(true)} ariaLabel="Edit allergies" />
       </div>
 
-      <div>
-        {profile.allergies.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No known allergies.</p>
-        ) : (
-          <ul className="space-y-2">
-            {profile.allergies.map((allergy, idx) => (
-              <li key={idx} className="flex items-center gap-2 text-xs text-foreground">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                <span>{allergy}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {profile.allergies.length === 0 ? (
+        <CardEmptyState
+          icon={ShieldAlert}
+          message="No allergies added yet."
+          onAdd={() => setIsEditing(true)}
+        />
+      ) : (
+        <ul className="flex flex-1 flex-col gap-2.5">
+          {profile.allergies.map((allergy, idx) => (
+            <li
+              key={idx}
+              className="flex items-center gap-2.5 rounded-lg bg-muted px-3 py-2.5 text-sm text-foreground"
+            >
+              <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />
+              <span>{allergy}</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <EditableCardModal
         title="Allergies"

@@ -8,7 +8,6 @@ import {
   HeartPulse,
   Bot,
   Settings,
-  HelpCircle,
   Droplet,
   LogOut,
   ChevronLeft,
@@ -99,7 +98,6 @@ export default function Sidebar({
 
   const secondaryItems = [
     { href: "/dashboard/settings", label: "Settings", icon: Settings },
-    { href: "/dashboard/support", label: "Support", icon: HelpCircle },
   ] as const;
 
   return (

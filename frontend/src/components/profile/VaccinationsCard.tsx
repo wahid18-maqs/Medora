@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2 } from "lucide-react";
+import { Syringe } from "lucide-react";
+import CardEditButton from "./CardEditButton";
+import CardEmptyState from "./CardEmptyState";
 import EditableCardModal, { FieldConfig } from "./EditableCardModal";
 import type { HealthProfile } from "@/lib/types";
 
@@ -28,35 +30,31 @@ export default function VaccinationsCard({
     .join("\n");
 
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-primary-dark">Vaccinations</h3>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="p-1.5 text-muted-foreground hover:text-primary-dark hover:bg-muted rounded-lg transition-colors cursor-pointer"
-          title="Edit Vaccinations"
-        >
-          <Edit2 size={15} />
-        </button>
+    <div className="flex h-full min-h-[240px] flex-col rounded-xl border border-border bg-card p-6 shadow-sm md:col-span-2 xl:col-span-3 lg:p-8">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h3 className="text-lg font-semibold text-primary-dark">Vaccinations</h3>
+        <CardEditButton onClick={() => setIsEditing(true)} ariaLabel="Edit vaccinations" />
       </div>
 
-      <div>
-        {profile.vaccinations.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No vaccinations recorded.</p>
-        ) : (
-          <div className="space-y-2">
-            {profile.vaccinations.map((vac, idx) => (
-              <div
-                key={vac.id || idx}
-                className="flex items-center justify-between bg-muted px-3 py-2 rounded-lg text-xs"
-              >
-                <span className="font-medium text-foreground">{vac.name}</span>
-                <span className="text-muted-foreground font-mono text-[11px]">{vac.date}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {profile.vaccinations.length === 0 ? (
+        <CardEmptyState
+          icon={Syringe}
+          message="No vaccinations added yet."
+          onAdd={() => setIsEditing(true)}
+        />
+      ) : (
+        <div className="grid flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {profile.vaccinations.map((vac, idx) => (
+            <div
+              key={vac.id || idx}
+              className="flex flex-col justify-between gap-2 rounded-xl border border-border bg-muted p-4"
+            >
+              <span className="text-sm font-semibold text-foreground">{vac.name}</span>
+              <span className="font-mono text-[13px] text-muted-foreground">{vac.date}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <EditableCardModal
         title="Vaccinations"

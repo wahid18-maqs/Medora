@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { User, Edit2 } from "lucide-react";
+import { User } from "lucide-react";
+import CardEditButton from "./CardEditButton";
 import EditableCardModal, { FieldConfig } from "./EditableCardModal";
 import type { HealthProfile } from "@/lib/types";
+
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined) return "Not set";
+  const text = String(value).trim();
+  return text && text !== "0" ? text : "Not set";
+}
 
 export default function UserProfileSummaryCard({
   profile,
@@ -27,39 +34,57 @@ export default function UserProfileSummaryCard({
     .join("")
     .toUpperCase();
 
+  const age = displayValue(profile.age);
+  const dob = displayValue(profile.dob);
+  const gender = displayValue(profile.gender);
+
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col justify-between">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg shadow-sm">
-            {initials || <User size={24} />}
+    <div className="flex h-full min-h-[240px] flex-col justify-between rounded-xl border border-border bg-card p-6 shadow-sm lg:p-8">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-bold text-primary-foreground shadow-sm">
+            {initials || <User size={28} />}
           </div>
-          <div>
-            <h2 className="text-lg font-semibold text-primary-dark">{profile.name}</h2>
-            <p className="text-xs text-muted-foreground">Patient Profile</p>
+          <div className="min-w-0">
+            <h2 className="truncate text-xl font-semibold text-primary-dark">
+              {profile.name || "Not set"}
+            </h2>
+            <p className="text-[13px] text-muted-foreground">Patient Profile</p>
           </div>
         </div>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary-dark hover:bg-muted px-2.5 py-1.5 rounded-lg border border-border transition-colors cursor-pointer"
-        >
-          <Edit2 size={13} />
-          Edit Info
-        </button>
+        <CardEditButton onClick={() => setIsEditing(true)} ariaLabel="Edit personal information" />
       </div>
 
-      <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border text-center">
+      <div className="grid grid-cols-3 gap-3 border-t border-border pt-5 text-center">
         <div>
           <span className="block text-xs text-muted-foreground">Age</span>
-          <span className="font-semibold text-foreground text-sm">{profile.age}</span>
+          <span
+            className={`mt-1 block text-sm font-semibold ${
+              age === "Not set" ? "text-muted-foreground" : "text-foreground"
+            }`}
+          >
+            {age}
+          </span>
         </div>
         <div>
           <span className="block text-xs text-muted-foreground">DOB</span>
-          <span className="font-semibold text-foreground text-sm">{profile.dob}</span>
+          <span
+            className={`mt-1 block truncate text-sm font-semibold ${
+              dob === "Not set" ? "text-muted-foreground" : "text-foreground"
+            }`}
+          >
+            {dob}
+          </span>
         </div>
         <div>
           <span className="block text-xs text-muted-foreground">Gender</span>
-          <span className="font-semibold text-foreground text-sm">{profile.gender}</span>
+          <span
+            className={`mt-1 block text-sm font-semibold ${
+              gender === "Not set" ? "text-muted-foreground" : "text-foreground"
+            }`}
+          >
+            {gender}
+          </span>
         </div>
       </div>
 
