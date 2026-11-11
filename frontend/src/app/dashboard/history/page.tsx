@@ -57,6 +57,7 @@ export default function ReportsHistoryPage() {
         exercise: "",
       },
       markers: item.markers || [],
+      summary: item.summary ?? null,
     });
   }
 

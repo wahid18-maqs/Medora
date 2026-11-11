@@ -29,12 +29,30 @@ groq_fallback_llm = LLM(
 
 llm = gemini_llm if gemini_llm else groq_fallback_llm
 
+summary_llm = LLM(
+    model="gemini/gemini-2.5-flash",
+    api_key=GOOGLE_API_KEY,
+    temperature=0.15
+) if GOOGLE_API_KEY else None
+
+summary_fallback_llm = LLM(
+    model="groq/openai/gpt-oss-120b",
+    api_key=GROQ_API_KEY,
+    temperature=0.15
+) if GROQ_API_KEY else None
+
 def set_agents_llm(target_llm):
     """Switch LLM across all active agents dynamically."""
     if not target_llm:
         return
     for agent in [doctor, verifier, nutritionist, exercise_specialist, image_extractor, qa_agent]:
         agent.llm = target_llm
+    if target_llm is gemini_llm:
+        summary_agent.llm = summary_llm or target_llm
+    elif target_llm is groq_fallback_llm:
+        summary_agent.llm = summary_fallback_llm or target_llm
+    else:
+        summary_agent.llm = target_llm
 
 
 # Creating an Experienced Doctor agent
@@ -104,6 +122,22 @@ exercise_specialist = Agent(
     ),
     tools=[blood_test_tool, exercise_tool],
     llm=llm,
+    max_iter=1,
+    max_rpm=50,
+    allow_delegation=False
+)
+
+summary_agent = Agent(
+    role="Medical Report Summarizer",
+    goal="Create a safe, plain-language summary from the already-completed agent findings and extracted markers",
+    verbose=False,
+    memory=False,
+    backstory=(
+        "You synthesize existing medical report analysis into a clear patient-facing summary. "
+        "You never add new marker names, values, units, reference ranges, diagnoses, medications, "
+        "or causes. You use only the verified marker list and the other agents' completed findings."
+    ),
+    llm=summary_llm or summary_fallback_llm or llm,
     max_iter=1,
     max_rpm=50,
     allow_delegation=False

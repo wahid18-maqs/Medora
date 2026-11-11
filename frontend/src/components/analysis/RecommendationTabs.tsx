@@ -111,9 +111,7 @@ export default function RecommendationTabs({
         ))}
       </Tabs.Root>
 
-      <p className="mt-5 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">
-        Medora provides informational insights and does not replace professional medical advice.
-      </p>
+
     </div>
   );
 }

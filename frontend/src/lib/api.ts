@@ -36,6 +36,7 @@ export interface AnalyzeResponse {
     exercise: string;
   };
   markers: Marker[];
+  summary?: import("./types").ReportSummary | null;
   marker_warning?: string | null;
   file_processed: string;
   source_type?: SourceType;
@@ -141,6 +142,10 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+    }),
+  summaryPdf: (reportId: string) =>
+    requestBlob(`/api/reports/${encodeURIComponent(reportId)}/summary-pdf`, {
+      method: "POST",
     }),
 };
 

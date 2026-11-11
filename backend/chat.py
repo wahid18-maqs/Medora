@@ -126,6 +126,7 @@ def get_report(report_id: str, user_email: str = Depends(get_current_user_email)
         "analysis": sanitize_markdown(report.get("analysis") or ""),
         "agents": agents,
         "markers": report.get("markers", []),
+        "summary": report.get("summary"),
         "source_type": report.get("source_type", "PDF"),
         "report_date": report.get("report_date"),
         "timestamp": timestamp or "",

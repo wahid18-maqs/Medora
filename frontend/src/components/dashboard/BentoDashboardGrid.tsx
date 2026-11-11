@@ -3,6 +3,7 @@
 import { Activity } from "lucide-react";
 import DetailedBreakdownTable from "@/components/analysis/DetailedBreakdownTable";
 import RecommendationTabs from "@/components/analysis/RecommendationTabs";
+import ActionFooter from "@/components/analysis/ActionFooter";
 import type { AnalysisResult } from "@/lib/types";
 
 interface BentoDashboardGridProps {
@@ -36,6 +37,7 @@ export default function BentoDashboardGrid({ result }: BentoDashboardGridProps) 
       {/* 2. Recommendations Tabs */}
       <div className="bg-card border border-border rounded-2xl p-6 shadow-xs">
         <RecommendationTabs agents={result.agents} markers={result.markers} />
+        <ActionFooter reportId={result.id} />
       </div>
     </div>
   );

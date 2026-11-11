@@ -37,6 +37,7 @@ function toAnalysisResult(item: HistoryItem): AnalysisResult {
       exercise: "",
     },
     markers: item.markers || [],
+    summary: item.summary ?? null,
   };
 }
 

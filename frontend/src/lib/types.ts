@@ -40,6 +40,24 @@ export interface ConfirmImagePayload {
   query: string;
 }
 
+export interface MarkerSummary {
+  name: string;
+  value: string;
+  unit?: string | null;
+  reference_range?: string | null;
+  status: "low" | "normal" | "high";
+  note: string;
+}
+
+export interface ReportSummary {
+  overview: string;
+  key_findings: string[];
+  markers: MarkerSummary[];
+  lifestyle_notes: string[];
+  questions_for_doctor: string[];
+  limitations: string;
+}
+
 export interface HistoryItem {
   analysis_id?: string;
   report_type?: string;
@@ -56,6 +74,7 @@ export interface HistoryItem {
     exercise: string;
   };
   markers?: Marker[];
+  summary?: ReportSummary | null;
   source_type?: SourceType;
   report_date?: string | null;
   timestamp: string;
@@ -95,6 +114,7 @@ export interface AnalysisResult {
     exercise: string;
   };
   markers: Marker[];
+  summary?: ReportSummary | null;
 }
 
 export interface ChatMessage {

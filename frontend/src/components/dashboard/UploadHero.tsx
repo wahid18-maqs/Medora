@@ -105,6 +105,7 @@ function buildResult(
       exercise: "",
     },
     markers: data.markers || [],
+    summary: data.summary ?? null,
   };
 }
 

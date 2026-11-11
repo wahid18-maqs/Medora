@@ -1,16 +1,17 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import uuid
 import re
 import json
+import asyncio
 from dotenv import load_dotenv
 import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from pydantic import BaseModel, Field
 from crewai import Crew, Process
-from agents import doctor, verifier, nutritionist, exercise_specialist, image_extractor
-from task import help_patients, verification, nutrition_analysis, exercise_planning, image_extraction_task
+from agents import doctor, verifier, nutritionist, exercise_specialist, summary_agent, image_extractor
+from task import help_patients, verification, nutrition_analysis, exercise_planning, summary_task, image_extraction_task
 from db import reports_collection
 from clean_text import sanitize_markdown
 from langchain_community.document_loaders import PyPDFLoader
@@ -20,6 +21,8 @@ from settings import router as settings_router
 from support import router as support_router
 from chat import router as chat_router
 from tools import to_internal_marker
+from summary import ReportSummary, build_fallback_summary, merge_limitation, validate_summary
+from summary_pdf import build_summary_pdf
 
 load_dotenv()
 
@@ -133,6 +136,95 @@ def _agent_outputs_from_crew(crew_output) -> Dict[str, str]:
     }
 
 
+def _summary_from_crew(
+    crew_output,
+    markers: List[Dict[str, Any]],
+    marker_warning: Optional[str],
+) -> ReportSummary:
+    task_outputs = getattr(crew_output, "tasks_output", [])
+    summary = None
+
+    if task_outputs:
+        summary_output = task_outputs[-1]
+        pydantic_output = getattr(summary_output, "pydantic", None)
+        if pydantic_output:
+            try:
+                summary = ReportSummary.model_validate(pydantic_output)
+            except Exception:
+                summary = None
+        if summary is None:
+            try:
+                summary = ReportSummary.model_validate(_parse_json_payload(str(summary_output)))
+            except Exception:
+                summary = None
+
+    if summary is not None:
+        errors = validate_summary(summary, markers, max(1, len(markers)))
+        if not errors:
+            return summary
+
+    return build_fallback_summary(markers, _agent_outputs_from_crew(crew_output), marker_warning)
+
+
+async def _generate_summary_for_existing_report(
+    report: Dict[str, Any],
+    report_id: str,
+) -> ReportSummary:
+    from agents import gemini_llm, groq_fallback_llm, set_agents_llm
+
+    markers = report.get("markers") if isinstance(report.get("markers"), list) else []
+    marker_warning = report.get("marker_warning")
+    agents = report.get("agents") if isinstance(report.get("agents"), dict) else {}
+    findings = []
+    for key in ("medical", "verification", "nutrition", "exercise"):
+        value = agents.get(key)
+        if isinstance(value, str) and value.strip():
+            findings.append(f"{key.title()} findings:\n{value}")
+
+    description = summary_task.description.replace(
+        "Completed agent findings are available in the task context. Do not introduce information that is absent from them.",
+        "Completed agent findings are provided below. Do not introduce information that is absent from them.",
+    )
+    if findings:
+        description += "\n\nStored agent findings:\n" + "\n\n".join(findings)
+    dynamic_task = summary_task.model_copy(update={"context": [], "description": description})
+    kickoff_inputs = {
+        "report_id": str(report.get("analysis_id") or report_id),
+        "report_date": str(report.get("report_date") or "Not specified"),
+        "patient_info": "Not provided",
+        "expected_min_markers": max(1, len(markers)),
+        "markers_json": json.dumps(markers, indent=2) if markers else "[]",
+        "query": report.get("query") or "Summarise my Blood Test Report",
+        "report": report.get("analysis") or "Stored report summary",
+    }
+
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + 55
+    for target_llm in (gemini_llm, groq_fallback_llm):
+        if not target_llm:
+            continue
+        remaining = deadline - loop.time()
+        if remaining <= 1:
+            break
+        try:
+            set_agents_llm(target_llm)
+            summary_crew = Crew(
+                agents=[summary_agent],
+                tasks=[dynamic_task],
+                process=Process.sequential,
+                verbose=False,
+            )
+            crew_output = await asyncio.wait_for(
+                summary_crew.kickoff_async(kickoff_inputs),
+                timeout=remaining,
+            )
+            return _summary_from_crew(crew_output, markers, marker_warning)
+        except Exception:
+            print("Summary generation error; trying the next option.")
+
+    return build_fallback_summary(markers, agents, marker_warning)
+
+
 def _marker_findings(markers: List[Dict[str, Any]]) -> str:
     if not markers:
         return "No markers could be extracted from this report, so marker-specific findings are unavailable."
@@ -142,14 +234,27 @@ def _marker_findings(markers: List[Dict[str, Any]]) -> str:
     )
 
 
-async def run_crew_async(query: str, report: str, markers: List[Dict[str, Any]]):
+async def run_crew_async(
+    query: str,
+    report: str,
+    markers: List[Dict[str, Any]],
+    report_id: str = "",
+    patient_info: str = "",
+    report_date: Optional[str] = None,
+    marker_warning: Optional[str] = None,
+) -> Tuple[Dict[str, str], ReportSummary]:
     from agents import gemini_llm, groq_fallback_llm, set_agents_llm
 
     markers_json = json.dumps(markers, indent=2) if markers else "[]"
+    expected_min_markers = max(1, len(markers))
     kickoff_inputs = {
         "query": query,
         "report": report,
         "markers_json": markers_json,
+        "report_id": report_id or "Not assigned",
+        "patient_info": patient_info or "Not provided",
+        "report_date": report_date or "Not specified",
+        "expected_min_markers": expected_min_markers,
     }
 
     # Attempt 1: Primary Gemini
@@ -158,13 +263,16 @@ async def run_crew_async(query: str, report: str, markers: List[Dict[str, Any]])
             print("Running Crew with Primary Gemini...")
             set_agents_llm(gemini_llm)
             medical_crew = Crew(
-                agents=[verifier, doctor, nutritionist, exercise_specialist],
-                tasks=[verification, help_patients, nutrition_analysis, exercise_planning],
+                agents=[verifier, doctor, nutritionist, exercise_specialist, summary_agent],
+                tasks=[verification, help_patients, nutrition_analysis, exercise_planning, summary_task],
                 process=Process.sequential,
                 verbose=False,
             )
             crew_output = await medical_crew.kickoff_async(kickoff_inputs)
-            return _agent_outputs_from_crew(crew_output)
+            return (
+                _agent_outputs_from_crew(crew_output),
+                _summary_from_crew(crew_output, markers, marker_warning),
+            )
         except Exception as gemini_err:
             print("Gemini execution error, attempting fallback to Groq:", str(gemini_err))
 
@@ -174,13 +282,16 @@ async def run_crew_async(query: str, report: str, markers: List[Dict[str, Any]])
             print("Running Crew with Fallback Groq LLM...")
             set_agents_llm(groq_fallback_llm)
             medical_crew = Crew(
-                agents=[verifier, doctor, nutritionist, exercise_specialist],
-                tasks=[verification, help_patients, nutrition_analysis, exercise_planning],
+                agents=[verifier, doctor, nutritionist, exercise_specialist, summary_agent],
+                tasks=[verification, help_patients, nutrition_analysis, exercise_planning, summary_task],
                 process=Process.sequential,
                 verbose=False,
             )
             crew_output = await medical_crew.kickoff_async(kickoff_inputs)
-            return _agent_outputs_from_crew(crew_output)
+            return (
+                _agent_outputs_from_crew(crew_output),
+                _summary_from_crew(crew_output, markers, marker_warning),
+            )
         except Exception as groq_err:
             print("Groq execution error, running direct specialized LLM generation:", str(groq_err))
 
@@ -230,23 +341,25 @@ async def run_crew_async(query: str, report: str, markers: List[Dict[str, Any]])
         )
 
         if med and ver and nut and exe:
-            return {
+            outputs = {
                 "medical": med,
                 "verification": ver,
                 "nutrition": nut,
                 "exercise": exe
             }
+            return outputs, build_fallback_summary(markers, outputs, marker_warning)
     except Exception as direct_err:
         print("Direct LLM generation error:", str(direct_err))
 
     # Static emergency fallback only if network is completely down
     findings = _marker_findings(markers)
-    return {
+    outputs = {
         "medical": f"## Key findings\n{findings}\n\n## Medical interpretation\nReview these findings with a clinician; no network model was available for deeper interpretation.",
         "verification": f"## Questions for your doctor\n{findings}\n\nAsk your clinician to review the status of each extracted marker above.",
         "nutrition": f"## Key findings\n{findings}\n\n## Nutrition guidance\nBase any dietary changes on the markers above and confirm them with your clinician.",
         "exercise": f"## Key findings\n{findings}\n\n## Exercise plan\nChoose activity appropriate for the markers above and confirm safety with your clinician."
     }
+    return outputs, build_fallback_summary(markers, outputs, marker_warning)
 
 
 def _parse_json_payload(text: str) -> Dict[str, Any]:
@@ -286,13 +399,6 @@ async def _complete_analysis(
 ) -> Dict[str, Any]:
     marker_warning = _marker_warning(markers, "image" if source_type == "Image" else "report")
 
-    agent_outputs = await run_crew_async(
-        query=query.strip() or "Summarise my Blood Test Report",
-        report=report_text,
-        markers=markers,
-    )
-    agent_outputs = {key: sanitize_markdown(value) for key, value in agent_outputs.items()}
-
     now = datetime.datetime.utcnow()
     year = now.year
     try:
@@ -301,6 +407,17 @@ async def _complete_analysis(
         db_count = len([r for r in IN_MEMORY_REPORTS if r.get("user_email") == user_email])
     seq_num = (db_count + 1) % 1000
     analysis_id = f"BTA-{year}-{seq_num:03d}"
+
+    agent_outputs, summary = await run_crew_async(
+        query=query.strip() or "Summarise my Blood Test Report",
+        report=report_text,
+        markers=markers,
+        report_id=analysis_id,
+        report_date=report_date,
+        marker_warning=marker_warning,
+    )
+    agent_outputs = {key: sanitize_markdown(value) for key, value in agent_outputs.items()}
+    summary = merge_limitation(summary, marker_warning)
 
     doc = {
         "analysis_id": analysis_id,
@@ -313,6 +430,7 @@ async def _complete_analysis(
         "agents": agent_outputs,
         "markers": markers,
         "marker_warning": marker_warning,
+        "summary": summary.model_dump(),
         "file_name": file_name,
         "source_type": source_type,
         "timestamp": now.isoformat(),
@@ -336,11 +454,70 @@ async def _complete_analysis(
         "agents": agent_outputs,
         "markers": markers,
         "marker_warning": marker_warning,
+        "summary": summary.model_dump(),
         "file_processed": file_name,
         "source_type": source_type,
         "report_date": report_date,
         "timestamp": now.isoformat(),
     }
+
+@app.post("/api/reports/{report_id}/summary-pdf")
+async def generate_summary_pdf(
+    report_id: str,
+    user_email: str = Depends(get_current_user_email),
+):
+    from chat import find_report_document
+
+    report = find_report_document(report_id, user_email)
+    markers = report.get("markers") if isinstance(report.get("markers"), list) else []
+    summary = None
+
+    stored_summary = report.get("summary")
+    if isinstance(stored_summary, dict):
+        try:
+            summary = ReportSummary.model_validate(stored_summary)
+        except Exception:
+            summary = None
+
+    if summary is None:
+        summary = await _generate_summary_for_existing_report(report, report_id)
+
+    if validate_summary(summary, markers, max(1, len(markers))):
+        summary = build_fallback_summary(
+            markers,
+            report.get("agents") if isinstance(report.get("agents"), dict) else {},
+            report.get("marker_warning"),
+        )
+
+    if summary is not None:
+        try:
+            if report.get("_id"):
+                reports_collection.update_one(
+                    {"_id": report["_id"]},
+                    {"$set": {"summary": summary.model_dump()}},
+                )
+            report["summary"] = summary.model_dump()
+        except Exception:
+            report["summary"] = summary.model_dump()
+
+    summary = merge_limitation(summary, report.get("marker_warning"))
+    report_date = report.get("report_date") or datetime.datetime.utcnow().date().isoformat()
+    pdf_bytes = build_summary_pdf(
+        summary=summary,
+        report_id=str(report.get("analysis_id") or report_id),
+        report_date=str(report_date),
+        diagnostic_center=report.get("diagnostic_center"),
+    )
+    safe_id = re.sub(r"[^A-Za-z0-9._-]+", "-", str(report_id)).strip("-") or "report"
+    safe_date = re.sub(r"[^A-Za-z0-9._-]+", "-", str(report_date)).strip("-") or "date"
+    filename = f"medora-summary-{safe_id}-{safe_date}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
 
 # Root health check
 @app.get("/")

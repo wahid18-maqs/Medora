@@ -70,7 +70,7 @@ export default function AnalysisDrawer({
       <RecommendationTabs agents={result.agents} markers={result.markers} />
 
       {/* 4. Action Footer (Unchanged position) */}
-      <ActionFooter />
+      <ActionFooter reportId={result.id} />
     </aside>
   );
 }

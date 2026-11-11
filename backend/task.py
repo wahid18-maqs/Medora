@@ -1,6 +1,7 @@
 from crewai import Task
-from agents import doctor, verifier, nutritionist, exercise_specialist, image_extractor, qa_agent
+from agents import doctor, verifier, nutritionist, exercise_specialist, summary_agent, image_extractor, qa_agent
 from tools import search_tool, blood_test_tool,nutrition_tool, exercise_tool, image_extraction_tool
+from summary import ReportSummary
 
 ## Creating a task to help solve user's query
 help_patients = Task(
@@ -103,6 +104,37 @@ Rules:\n\
     tools=[],
     input_variables=["report", "markers_json"],
     async_execution=False
+)
+
+summary_task = Task(
+    description="Create a patient-facing summary using ONLY the authoritative extracted marker list and the completed findings from the other agents.\n\
+Report ID: {report_id}\n\
+Report date: {report_date}\n\
+Patient context: {patient_info}\n\
+Expected minimum marker count: {expected_min_markers}\n\
+Extracted marker list (authoritative JSON):\n{markers_json}\n\
+Completed agent findings are available in the task context. Do not introduce information that is absent from them.\n\
+Rules:\n\
+1. Only include marker names, values, units, reference ranges, and statuses that appear in the authoritative JSON. Never invent a marker.\n\
+2. Copy values, units, reference ranges, and statuses exactly from the JSON. Do not round or reinterpret them.\n\
+3. Do not provide a diagnosis, medication names or dosages, or certainty about causes.\n\
+4. Use plain 8th-grade language.\n\
+5. Write a 3-4 sentence overview.\n\
+6. Return at most 5 key findings, with abnormal markers first.\n\
+7. Write exactly one sentence for each marker note.\n\
+8. Use only the nutrition and exercise findings for lifestyle notes.\n\
+9. Return 3-5 questions the patient should ask their doctor.\n\
+10. If fewer markers than the expected minimum were read, state that clearly in limitations.\n\
+11. Use lowercase status values: low, normal, or high.\n\
+Return JSON matching the ReportSummary schema only.",
+
+    expected_output="A ReportSummary object with overview, key_findings, markers, lifestyle_notes, questions_for_doctor, and limitations.",
+
+    agent=summary_agent,
+    context=[verification, help_patients, nutrition_analysis, exercise_planning],
+    output_pydantic=ReportSummary,
+    input_variables=["report_id", "report_date", "patient_info", "expected_min_markers", "markers_json"],
+    async_execution=False,
 )
 
 image_extraction_task = Task(
