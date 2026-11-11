@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search, ZoomIn, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Search, ZoomIn, FileText, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 import PageContainer from "@/components/layout/PageContainer";
 import AnalysisDrawer from "@/components/analysis/AnalysisDrawer";
 import { useHistory } from "@/hooks/useHistory";
+import { api } from "@/lib/api";
 import { normalizeMarkers } from "@/lib/markers";
 import { stripMarkdown } from "@/lib/utils";
 import type { HistoryItem, AnalysisResult } from "@/lib/types";
@@ -20,6 +22,9 @@ export default function ReportsHistoryPage() {
   const [selectedPill, setSelectedPill] = useState("All Reports");
 
   const [activeResult, setActiveResult] = useState<AnalysisResult | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: historyData, isLoading } = useHistory({
     page,
@@ -34,6 +39,34 @@ export default function ReportsHistoryPage() {
 
   const startRange = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const endRange = Math.min(page * pageSize, totalCount);
+
+  async function handleDeleteReport(item: HistoryItem, displayId: string) {
+    const confirmed = window.confirm(
+      `Delete analysis #${displayId}? This also removes its saved chat history and cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    const reportId = item.analysis_id || item.file;
+    setDeletingId(reportId);
+    setDeleteError(null);
+
+    try {
+      await api.deleteReport(reportId);
+      if (activeResult?.id === reportId) {
+        setActiveResult(null);
+      }
+      if (items.length === 1 && page > 1) {
+        setPage((current) => Math.max(1, current - 1));
+      }
+      await queryClient.invalidateQueries({ queryKey: ["history"] });
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error ? error.message : "Failed to delete this report. Please try again."
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   function handleSelectRow(item: HistoryItem) {
     const formattedDate = isNaN(new Date(item.timestamp).getTime())
@@ -69,6 +102,11 @@ export default function ReportsHistoryPage() {
       <PageContainer width="full" className="mx-auto max-w-[1600px]">
         <header className="mb-6">
           <h1 className="text-2xl font-semibold text-primary-dark">Reports History</h1>
+          {deleteError && (
+            <p className="mt-2 text-sm font-medium text-destructive" role="alert">
+              {deleteError}
+            </p>
+          )}
         </header>
 
         {/* Summary + Search Row */}
@@ -165,6 +203,8 @@ export default function ReportsHistoryPage() {
                       : new Date(item.timestamp).toLocaleDateString();
 
                     const doctorNotes = stripMarkdown(item.agents?.medical || item.analysis) || "No doctor notes available.";
+                    const displayId = item.analysis_id || `BTA-2026-${(idx + 1).toString().padStart(3, "0")}`;
+                    const isDeleting = deletingId === (item.analysis_id || item.file);
 
                     return (
                       <tr key={(item.analysis_id || item.file) + item.timestamp + idx}>
@@ -176,7 +216,7 @@ export default function ReportsHistoryPage() {
                             title="Open this analysis in the Dashboard"
                             className="text-primary-dark hover:underline cursor-pointer"
                           >
-                            #{item.analysis_id || `BTA-2026-${(idx + 1).toString().padStart(3, "0")}`}
+                            #{displayId}
                           </Link>
                         </td>
                         <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{formattedDate}</td>
@@ -214,6 +254,15 @@ export default function ReportsHistoryPage() {
                               className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-colors cursor-pointer"
                             >
                               <FileText size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteReport(item, displayId)}
+                              disabled={isDeleting}
+                              title="Delete analysis"
+                              aria-label={`Delete analysis ${displayId}`}
+                              className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <Trash2 size={16} />
                             </button>
                           </div>
                         </td>

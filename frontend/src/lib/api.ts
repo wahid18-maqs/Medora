@@ -92,6 +92,11 @@ export const api = {
   deleteAccount: () => request<{ status: string }>("/settings/account", { method: "DELETE" }),
   getReport: (reportId: string) =>
     request<HistoryItem>(`/reports/${encodeURIComponent(reportId)}`),
+  deleteReport: (reportId: string) =>
+    request<{ status: string; report_id: string }>(
+      `/reports/${encodeURIComponent(reportId)}`,
+      { method: "DELETE" }
+    ),
   getChatHistory: (reportId: string) =>
     request<{ report_id: string; messages: import("./types").ChatMessage[] }>(`/reports/${encodeURIComponent(reportId)}/chat`),
   getReportChat: (reportId: string) =>

@@ -133,6 +133,75 @@ def get_report(report_id: str, user_email: str = Depends(get_current_user_email)
     }
 
 
+@router.delete("/reports/{report_id}")
+def delete_report(report_id: str, user_email: str = Depends(get_current_user_email)):
+    """Delete one saved analysis and its chat history for the authenticated user."""
+    report = find_report_document(report_id, user_email)
+
+    identifiers = {
+        str(value)
+        for value in (
+            report_id,
+            report.get("analysis_id"),
+            report.get("file_name"),
+            report.get("file"),
+            report.get("_id"),
+        )
+        if value
+    }
+
+    errors = []
+    report_from_mongo = report.get("_id") is not None
+
+    if report_from_mongo:
+        try:
+            reports_collection.delete_one({"_id": report["_id"]})
+        except Exception as err:
+            errors.append(f"Report delete error: {str(err)}")
+
+        try:
+            chat_messages_collection.delete_many(
+                {"user_email": user_email, "report_id": {"$in": list(identifiers)}}
+            )
+        except Exception as err:
+            errors.append(f"Chat delete error: {str(err)}")
+
+    IN_MEMORY_REPORTS[:] = [
+        item
+        for item in IN_MEMORY_REPORTS
+        if not (
+            item is report
+            or (
+                item.get("user_email") == user_email
+                and str(
+                    item.get("analysis_id")
+                    or item.get("file_name")
+                    or item.get("file")
+                    or item.get("_id")
+                    or ""
+                )
+                in identifiers
+            )
+        )
+    ]
+    IN_MEMORY_CHAT_MESSAGES[:] = [
+        message
+        for message in IN_MEMORY_CHAT_MESSAGES
+        if not (
+            message.get("user_email") == user_email
+            and str(message.get("report_id")) in identifiers
+        )
+    ]
+
+    if errors:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Partial failure while deleting report: {'; '.join(errors)}",
+        )
+
+    return {"status": "deleted", "report_id": report.get("analysis_id") or report_id}
+
+
 @router.post("/reports/{report_id}/chat")
 async def post_chat_message(
     report_id: str,
