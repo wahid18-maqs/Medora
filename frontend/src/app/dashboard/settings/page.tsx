@@ -12,7 +12,7 @@ export default function SettingsPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar activeHref="/dashboard/settings" />
 
-      <PageContainer>
+      <PageContainer width="full" className="mx-auto max-w-[1600px]">
         <header className="mb-8">
           <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
             <Link href="/dashboard" className="transition-colors hover:text-primary">

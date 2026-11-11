@@ -14,13 +14,14 @@ import {
 import type { TooltipContentProps } from "recharts";
 import { Activity } from "lucide-react";
 import type { HistoryItem } from "@/lib/types";
+import { normalizeMarkers } from "@/lib/markers";
 
 type ChartPoint = {
   date: string;
   fullDate: string;
   value: number;
   unit: string;
-  range: [number, number];
+  range: [number, number] | null;
   rawTimestamp: number;
 };
 
@@ -47,10 +48,10 @@ export default function BiomarkerTrendsCard({ history }: { history: HistoryItem[
     const points: ChartPoint[] = [];
 
     history.forEach((item) => {
-      const foundMarker = item.markers?.find(
+      const foundMarker = normalizeMarkers(item.markers).find(
         (m) => m.name.toLowerCase() === activeMarker.toLowerCase()
       );
-      if (foundMarker) {
+      if (foundMarker && foundMarker.value !== null) {
         const d = new Date(item.timestamp);
         const timeVal = isNaN(d.getTime()) ? 0 : d.getTime();
         const dateStr = isNaN(d.getTime())
@@ -69,7 +70,10 @@ export default function BiomarkerTrendsCard({ history }: { history: HistoryItem[
           fullDate,
           value: foundMarker.value,
           unit: foundMarker.unit || "",
-          range: foundMarker.range,
+          range:
+            foundMarker.ref_low !== null && foundMarker.ref_high !== null
+              ? [foundMarker.ref_low, foundMarker.ref_high]
+              : null,
           rawTimestamp: timeVal,
         });
       }

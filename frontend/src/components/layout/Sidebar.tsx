@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   History,
   HeartPulse,
-  Bot,
   Settings,
   Droplet,
   LogOut,
@@ -19,8 +18,6 @@ import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   activeHref?: string;
-  onToggleChat?: () => void;
-  isChatOpen?: boolean;
 }
 
 function CollapsedTooltip({ show, label }: { show: boolean; label: string }) {
@@ -65,11 +62,7 @@ function NavLink({
   );
 }
 
-export default function Sidebar({
-  activeHref = "/dashboard",
-  onToggleChat,
-  isChatOpen = false,
-}: SidebarProps) {
+export default function Sidebar({ activeHref = "/dashboard" }: SidebarProps) {
   const { logout } = useAuth();
   const pathname = usePathname();
   const currentPath = pathname || activeHref;
@@ -137,36 +130,6 @@ export default function Sidebar({
               isActive={currentPath === item.href}
             />
           ))}
-
-          <button
-            type="button"
-            onClick={onToggleChat}
-            aria-label="AI Assistant"
-            aria-expanded={isChatOpen}
-            className={cn(
-              "group relative flex w-full cursor-pointer items-center rounded-lg text-left text-sm transition-all",
-              isCollapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2",
-              isChatOpen
-                ? "font-medium text-primary hover:bg-muted"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Bot size={18} className="shrink-0" />
-            {!isCollapsed && (
-              <div className="flex flex-1 items-center justify-between">
-                <span className="truncate">AI Assistant</span>
-                <span
-                  className={cn(
-                    "rounded px-1.5 py-0.5 text-[10px] font-medium",
-                    isChatOpen ? "bg-primary/15 text-primary" : "bg-primary/10 text-primary"
-                  )}
-                >
-                  Q&A
-                </span>
-              </div>
-            )}
-            <CollapsedTooltip show={isCollapsed} label="AI Assistant" />
-          </button>
 
           {secondaryItems.map((item) => (
             <NavLink

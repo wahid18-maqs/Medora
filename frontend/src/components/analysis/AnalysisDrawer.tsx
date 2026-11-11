@@ -67,7 +67,7 @@ export default function AnalysisDrawer({
       </div>
 
       {/* 3. Existing Tab Pair: RecommendationTabs (Unchanged position & internal logic) */}
-      <RecommendationTabs agents={result.agents} markers={result.markers} />
+      <RecommendationTabs agents={result.agents} />
 
       {/* 4. Action Footer (Unchanged position) */}
       <ActionFooter reportId={result.id} />

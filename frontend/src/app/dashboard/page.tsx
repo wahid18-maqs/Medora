@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Bot } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
-import PageContainer from "@/components/layout/PageContainer";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import UploadHero from "@/components/dashboard/UploadHero";
+import UploadHero, { type UploadHeroHandle } from "@/components/dashboard/UploadHero";
 import KeyMetricsStrip from "@/components/dashboard/KeyMetricsStrip";
 import BentoDashboardGrid from "@/components/dashboard/BentoDashboardGrid";
 import ResultsSkeleton from "@/components/dashboard/ResultsSkeleton";
 import ContextualChatPanel from "@/components/analysis/ContextualChatPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
+import { normalizeMarkers } from "@/lib/markers";
 import type { AnalysisResult, HistoryItem, UploadStatus } from "@/lib/types";
 
 function toAnalysisResult(item: HistoryItem): AnalysisResult {
@@ -36,7 +36,7 @@ function toAnalysisResult(item: HistoryItem): AnalysisResult {
       nutrition: "",
       exercise: "",
     },
-    markers: item.markers || [],
+    markers: normalizeMarkers(item.markers),
     summary: item.summary ?? null,
   };
 }
@@ -52,6 +52,7 @@ function clearAnalysisParam() {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const uploadRef = useRef<UploadHeroHandle>(null);
   const [activeResult, setActiveResult] = useState<AnalysisResult | null>(null);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("empty");
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -95,69 +96,84 @@ export default function DashboardPage() {
     clearAnalysisParam();
   };
 
+  const hasResult = Boolean(activeResult) && uploadStatus === "ready";
+  const markerCount = activeResult?.markers.length ?? 0;
   const markerWarning =
     activeResult?.markerWarning ||
-    (activeResult?.markers.length === 1
-      ? `Only 1 marker could be read from this ${
-          activeResult.sourceType === "Image" ? "image" : "report"
-        }. Results may be incomplete.`
+    (hasResult && markerCount < 3
+      ? `Only ${markerCount} marker${markerCount === 1 ? "" : "s"} could be read from this report. Results may be incomplete.`
       : null);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar
-        activeHref="/dashboard"
-        isChatOpen={isChatOpen}
-        onToggleChat={() => setIsChatOpen((prev) => !prev)}
-      />
+      <Sidebar activeHref="/dashboard" />
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <PageContainer width="full">
-          <div className="mx-auto w-full max-w-5xl">
-            <DashboardHeader name={user?.name ?? "there"} hasResult={Boolean(activeResult) && uploadStatus === "ready"} />
+      <main className="min-w-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-[1600px] px-6 py-6 lg:px-8">
+          {restoreError && (
+            <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
+              {restoreError}
+            </div>
+          )}
 
-            {restoreError && (
-              <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
-                {restoreError}
-              </div>
-            )}
+          {isRestoring ? (
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-xs sm:p-10">
+              Loading saved analysis session...
+            </div>
+          ) : hasResult && activeResult ? (
+            <>
+              <DashboardHeader
+                name={user?.name ?? "there"}
+                hasResult
+                onUpload={() => uploadRef.current?.openFilePicker()}
+              />
 
-            {isRestoring ? (
-              <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-xs sm:p-10">
-                Loading saved analysis session...
-              </div>
-            ) : (
               <UploadHero
+                ref={uploadRef}
                 status={uploadStatus}
                 setStatus={setUploadStatus}
                 onAnalyzed={handleAnalyzed}
                 result={activeResult}
               />
-            )}
 
-            {uploadStatus === "analyzing" && <ResultsSkeleton />}
+              {markerWarning && (
+                <div
+                  role="status"
+                  className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs font-medium text-amber-800 dark:text-amber-300"
+                >
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                  <span>{markerWarning}</span>
+                </div>
+              )}
 
-            {markerWarning && uploadStatus === "ready" && !isRestoring && (
-              <div
-                role="status"
-                className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs font-medium text-amber-800 dark:text-amber-300"
-              >
-                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                <span>{markerWarning}</span>
-              </div>
-            )}
-
-            {activeResult && uploadStatus === "ready" && (
-              <div className="mt-6 animate-in space-y-6 fade-in duration-300">
+              <div className="mt-4 animate-in space-y-4 fade-in duration-300">
                 <KeyMetricsStrip markers={activeResult.markers} />
                 <BentoDashboardGrid result={activeResult} />
               </div>
-            )}
-          </div>
-        </PageContainer>
-      </div>
+            </>
+          ) : (
+            <>
+              <DashboardHeader
+                name={user?.name ?? "there"}
+                hasResult={false}
+                onUpload={() => uploadRef.current?.openFilePicker()}
+              />
 
-      {activeResult && !isChatOpen && (
+              <UploadHero
+                ref={uploadRef}
+                status={uploadStatus}
+                setStatus={setUploadStatus}
+                onAnalyzed={handleAnalyzed}
+                result={activeResult}
+              />
+
+              {uploadStatus === "analyzing" && <ResultsSkeleton />}
+            </>
+          )}
+        </div>
+      </main>
+
+      {hasResult && !isChatOpen && (
         <button
           type="button"
           onClick={() => setIsChatOpen(true)}
@@ -168,7 +184,7 @@ export default function DashboardPage() {
         </button>
       )}
 
-      {activeResult && (
+      {hasResult && activeResult && (
         <ContextualChatPanel
           reportId={activeResult.id}
           markers={activeResult.markers}

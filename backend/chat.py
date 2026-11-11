@@ -148,7 +148,11 @@ async def post_chat_message(
     # 1. Markers
     markers = report.get("markers", [])
     if markers:
-        marker_lines = [f"- {m.get('name')}: {m.get('value')} {m.get('unit')} (Normal: {m.get('range', [])}, Status: {m.get('status')})" for m in markers]
+        marker_lines = [
+            f"- {m.get('name')}: {m.get('value_text') or m.get('value')} {m.get('unit')} "
+            f"(Reference: {m.get('ref_raw') or m.get('range') or 'not provided'}, Status: {m.get('status')})"
+            for m in markers
+        ]
         context_sections.append("Extracted Blood Markers:\n" + "\n".join(marker_lines))
 
     # 2. Agent findings

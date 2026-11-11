@@ -13,7 +13,7 @@ interface BentoDashboardGridProps {
 export default function BentoDashboardGrid({ result }: BentoDashboardGridProps) {
   return (
     <div className="space-y-6">
-      {/* 1. Primary Detail Table: Clinical Marker Measurements (Full Width) */}
+      {/* Clinical marker measurements */}
       <div className="bg-card border border-border rounded-2xl p-6 shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -22,10 +22,10 @@ export default function BentoDashboardGrid({ result }: BentoDashboardGridProps) 
             </div>
             <div>
               <h3 className="font-semibold text-base text-foreground">
-                Clinical Marker Measurements
+                Clinical markers
               </h3>
               <p className="text-xs text-muted-foreground">
-                Extracted values with calibrated gauge ranges and status flags
+                Extracted values with reference ranges. Abnormal markers appear first.
               </p>
             </div>
           </div>
@@ -34,11 +34,11 @@ export default function BentoDashboardGrid({ result }: BentoDashboardGridProps) 
         <DetailedBreakdownTable markers={result.markers} />
       </div>
 
-      {/* 2. Recommendations Tabs */}
       <div className="bg-card border border-border rounded-2xl p-6 shadow-xs">
-        <RecommendationTabs agents={result.agents} markers={result.markers} />
-        <ActionFooter reportId={result.id} />
+        <RecommendationTabs agents={result.agents} />
       </div>
+
+      <ActionFooter reportId={result.id} />
     </div>
   );
 }

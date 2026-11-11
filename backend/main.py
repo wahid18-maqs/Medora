@@ -21,6 +21,7 @@ from settings import router as settings_router
 from support import router as support_router
 from chat import router as chat_router
 from tools import to_internal_marker
+from extraction import build_marker_warning, extract_pdf_report
 from summary import ReportSummary, build_fallback_summary, merge_limitation, validate_summary
 from summary_pdf import build_summary_pdf
 
@@ -228,10 +229,14 @@ async def _generate_summary_for_existing_report(
 def _marker_findings(markers: List[Dict[str, Any]]) -> str:
     if not markers:
         return "No markers could be extracted from this report, so marker-specific findings are unavailable."
-    return "\n".join(
-        f"- **{m['name']}**: {m['value']} {m['unit']} — **{m['status']}** (reference {m['range'][0]}–{m['range'][1]})"
-        for m in markers
-    )
+    lines = []
+    for marker in markers:
+        reference = marker.get("ref_raw") or "not provided"
+        lines.append(
+            f"- **{marker.get('name')}**: {marker.get('value_text') or marker.get('value')} "
+            f"{marker.get('unit') or ''} — **{marker.get('status')}** (reference {reference})"
+        )
+    return "\n".join(lines)
 
 
 async def run_crew_async(
@@ -306,7 +311,7 @@ async def run_crew_async(
         )
         consistency_rules = (
             "\n\nRules: only mention tests present in the authoritative marker JSON; "
-            "use the exact Low/Normal/High statuses in that JSON; if the list is short, say the analysis is limited; "
+            "use the exact low/normal/high/unknown statuses in that JSON; if the list is short, say the analysis is limited; "
             "if the list is empty, say no markers were extracted; do not invent findings. "
             "Return concise markdown with a '## Key findings' section first. "
             "Do not use a letter, salutation, or sign-off."
@@ -379,11 +384,12 @@ def _parse_json_payload(text: str) -> Dict[str, Any]:
     raise ValueError("No JSON object found")
 
 
-def _marker_warning(markers: List[Dict[str, Any]], source_label: str) -> Optional[str]:
-    if len(markers) == 1:
-        return f"Only 1 marker could be read from this {source_label}. Results may be incomplete."
-    if len(markers) == 0:
-        return f"No markers could be read from this {source_label}. Results may be incomplete."
+def _marker_warning(
+    markers: List[Dict[str, Any]], source_label: str, page_count: int = 1
+) -> Optional[str]:
+    warning = build_marker_warning(markers, page_count)
+    if warning:
+        return warning
     return None
 
 
@@ -396,8 +402,11 @@ async def _complete_analysis(
     diagnostic_center: str,
     source_type: str,
     report_date: Optional[str] = None,
+    page_count: int = 1,
 ) -> Dict[str, Any]:
-    marker_warning = _marker_warning(markers, "image" if source_type == "Image" else "report")
+    marker_warning = _marker_warning(
+        markers, "image" if source_type == "Image" else "report", page_count
+    )
 
     now = datetime.datetime.utcnow()
     year = now.year
@@ -433,6 +442,7 @@ async def _complete_analysis(
         "summary": summary.model_dump(),
         "file_name": file_name,
         "source_type": source_type,
+        "page_count": page_count,
         "timestamp": now.isoformat(),
     }
     if report_date:
@@ -543,16 +553,17 @@ async def analyze_blood_report(
         if not query.strip():
             query = "Summarise my Blood Test Report"
 
-        report_text = extract_text_from_pdf(file_path)
+        extraction = extract_pdf_report(file_path)
+        report_text = extraction.get("report_text") or ""
+        markers = extraction.get("markers") or []
 
-        if not report_text.strip():
+        if not report_text.strip() and not markers:
             return {
                 "status": "error",
                 "message": "The PDF appears to be empty or unreadable."
             }
 
-        markers = parse_markers_from_text(report_text)
-        diagnostic_center = extract_lab_name(report_text)
+        diagnostic_center = extraction.get("lab_name") or extract_lab_name(report_text)
 
         return await _complete_analysis(
             query=query,
@@ -562,6 +573,8 @@ async def analyze_blood_report(
             file_name=file.filename or "blood_test_report.pdf",
             diagnostic_center=diagnostic_center,
             source_type="PDF",
+            report_date=extraction.get("report_date"),
+            page_count=extraction.get("page_count") or 1,
         )
 
     except Exception as e:
@@ -676,8 +689,9 @@ async def analyze_confirmed_image(
     ]
     for marker in internal_markers:
         report_lines.append(
-            f"- {marker['name']}: {marker['value']} {marker['unit']} "
-            f"(reference {marker['range'][0]}-{marker['range'][1]}, status {marker['status']})"
+            f"- {marker.get('name')}: {marker.get('value_text') or marker.get('value')} "
+            f"{marker.get('unit') or ''} "
+            f"(reference {marker.get('ref_raw') or 'not provided'}, status {marker.get('status')})"
         )
 
     return await _complete_analysis(
@@ -689,6 +703,7 @@ async def analyze_confirmed_image(
         diagnostic_center=lab_name,
         source_type="Image",
         report_date=report_date,
+        page_count=max(1, len([name for name in payload.file_names if name])),
     )
 
 

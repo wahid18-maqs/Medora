@@ -1,12 +1,11 @@
 "use client";
 
-import { DragEvent, useEffect, useRef, useState } from "react";
+import { DragEvent, forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   Camera,
   CheckCircle2,
-  FilePlus2,
   GripVertical,
   ImagePlus,
   Loader2,
@@ -18,6 +17,7 @@ import {
 import { z } from "zod";
 import { useAnalyzeReport } from "@/hooks/useAnalyzeReport";
 import { api } from "@/lib/api";
+import { normalizeMarkers } from "@/lib/markers";
 import type { AnalyzeResponse } from "@/lib/api";
 import type {
   AnalysisResult,
@@ -32,6 +32,10 @@ interface UploadHeroProps {
   status: UploadStatus;
   setStatus: (s: UploadStatus) => void;
   result?: AnalysisResult | null;
+}
+
+export interface UploadHeroHandle {
+  openFilePicker: () => void;
 }
 
 const DEFAULT_QUERY = "Summarise my Blood Test Report";
@@ -104,17 +108,15 @@ function buildResult(
       nutrition: "",
       exercise: "",
     },
-    markers: data.markers || [],
+    markers: normalizeMarkers(data.markers),
     summary: data.summary ?? null,
   };
 }
 
-export default function UploadHero({
-  onAnalyzed,
-  status,
-  setStatus,
-  result,
-}: UploadHeroProps) {
+const UploadHero = forwardRef<UploadHeroHandle, UploadHeroProps>(function UploadHero(
+  { onAnalyzed, status, setStatus, result },
+  ref
+) {
   const browseRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -126,6 +128,10 @@ export default function UploadHero({
   const [extraction, setExtraction] = useState<ImageExtractionResponse | null>(null);
   const [reviewRows, setReviewRows] = useState<ExtractedMarker[]>([]);
   const { mutate, isPending } = useAnalyzeReport();
+
+  useImperativeHandle(ref, () => ({
+    openFilePicker: () => browseRef.current?.click(),
+  }), []);
 
   const extractMutation = useMutation({
     mutationFn: ({ files }: { files: File[] }) => api.extractImages(files, DEFAULT_QUERY),
@@ -342,63 +348,25 @@ export default function UploadHero({
 
   if (status === "ready") {
     return (
-      <div className="w-full rounded-xl border border-border bg-card p-5 shadow-xs">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 size={22} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="truncate text-sm font-semibold text-foreground">
-                  {result?.source || "Blood Report Analyzed"}
-                </span>
-                <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                  Ready
-                </span>
-                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                  {result?.sourceType || "PDF"}
-                </span>
-              </div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                AI multi-agent breakdown, clinical markers, and recommendations generated.
-              </p>
-
-              <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 text-xs sm:grid-cols-3">
-                <div>
-                  <dt className="font-medium uppercase tracking-wider text-muted-foreground">Report date</dt>
-                  <dd className="mt-0.5 text-[13px] font-medium text-foreground">
-                    {formatReportDate(result)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-medium uppercase tracking-wider text-muted-foreground">Lab name</dt>
-                  <dd className="mt-0.5 truncate text-[13px] font-medium text-foreground">
-                    {result?.diagnosticCenter || "Not specified"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-medium uppercase tracking-wider text-muted-foreground">File name</dt>
-                  <dd className="mt-0.5 truncate text-[13px] font-medium text-foreground" title={result?.source}>
-                    {result?.source || "Not specified"}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 print:hidden">
-            <button
-              type="button"
-              onClick={() => browseRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 cursor-pointer"
-            >
-              <FilePlus2 size={15} />
-              New Analysis
-            </button>
-            {hiddenInputs}
-          </div>
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-xs">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+          <CheckCircle2 size={20} />
         </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate text-sm font-semibold text-foreground">
+              {result?.source || "Blood Report Analyzed"}
+            </span>
+            <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+              Ready
+            </span>
+          </div>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            Lab: {result?.diagnosticCenter || "Not specified"} · Report date{" "}
+            {formatReportDate(result)} · Source: {result?.sourceType || "PDF"}
+          </p>
+        </div>
+        <div className="print:hidden">{hiddenInputs}</div>
       </div>
     );
   }
@@ -614,7 +582,13 @@ export default function UploadHero({
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl rounded-xl border border-border bg-card p-8 shadow-xs sm:p-10">
+    <div
+      className={
+        imageFiles.length > 0
+          ? "mx-auto w-full max-w-2xl rounded-xl border border-border bg-card p-8 shadow-xs sm:p-10"
+          : "w-full"
+      }
+    >
       {errorMessage && (
         <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg text-xs flex items-center gap-2">
           <AlertCircle size={16} className="shrink-0" />
@@ -734,7 +708,7 @@ export default function UploadHero({
           }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
-          className={`border-2 border-dashed rounded-xl py-12 px-6 flex flex-col items-center justify-center gap-3 transition-colors text-center ${
+          className={`flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed bg-card px-6 py-16 text-center shadow-xs transition-colors sm:min-h-[380px] sm:py-24 ${
             dragOver ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/40"
           }`}
         >
@@ -743,9 +717,9 @@ export default function UploadHero({
           </div>
 
           <div>
-            <h3 className="font-semibold text-foreground text-base">Upload Your Blood Test Report</h3>
+            <h3 className="font-semibold text-foreground text-base">Upload your blood test report</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              Drag & drop a PDF or image of your report, or browse from your device
+              Drag and drop a PDF or image, or browse from your device
             </p>
           </div>
 
@@ -753,7 +727,7 @@ export default function UploadHero({
             onClick={() => browseRef.current?.click()}
             className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-5 py-2.5 rounded-lg transition-colors shadow-xs cursor-pointer mt-2"
           >
-            Select Report
+            Select report
           </button>
 
           <button
@@ -766,7 +740,7 @@ export default function UploadHero({
           </button>
 
           <p className="text-xs text-muted-foreground">
-            Supports PDF, JPG, PNG, WebP, and HEIC. Up to {MAX_IMAGES} images, 10 MB each.
+            PDF, JPG, PNG, WebP, HEIC · up to 10 MB each
           </p>
         </div>
       )}
@@ -774,4 +748,6 @@ export default function UploadHero({
       {hiddenInputs}
     </div>
   );
-}
+});
+
+export default UploadHero;

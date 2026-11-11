@@ -11,7 +11,7 @@ Blood Test Report Data:\n{report}\n\n\
 Query: {query}\n\n\
 Rules:\n\
 1. Only mention tests that appear in the extracted marker list above. Never mention a test that is absent from that list.\n\
-2. Use the exact status values from the JSON (Low, Normal, High). Do not contradict them.\n\
+2. Use the exact status values from the JSON (low, normal, high, unknown). Do not contradict them.\n\
 3. If the list contains only a few markers, say clearly that the analysis is limited to those markers.\n\
 4. If the list is empty, state that no markers could be extracted and do not invent findings.\n\
 5. Do not write a letter, salutation, or sign-off. Return concise markdown with a '## Key findings' section first.",
@@ -89,7 +89,7 @@ Extracted marker list (authoritative JSON):\n{markers_json}\n\n\
 Blood Test Report Data:\n{report}\n\n\
 Rules:\n\
 1. Only mention tests that appear in the extracted marker list above.\n\
-2. Use the exact status values from the JSON (Low, Normal, High).\n\
+2. Use the exact status values from the JSON (low, normal, high, unknown).\n\
 3. If only one marker was extracted, explicitly note that the review is limited to that marker.\n\
 4. If the list is empty, state that no marker-specific questions can be generated.\n\
 5. Do not write a letter, salutation, or sign-off. Return concise markdown.",
@@ -125,7 +125,7 @@ Rules:\n\
 8. Use only the nutrition and exercise findings for lifestyle notes.\n\
 9. Return 3-5 questions the patient should ask their doctor.\n\
 10. If fewer markers than the expected minimum were read, state that clearly in limitations.\n\
-11. Use lowercase status values: low, normal, or high.\n\
+11. Use lowercase status values: low, normal, high, or unknown.\n\
 Return JSON matching the ReportSummary schema only.",
 
     expected_output="A ReportSummary object with overview, key_findings, markers, lifestyle_notes, questions_for_doctor, and limitations.",

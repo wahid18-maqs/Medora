@@ -14,3 +14,6 @@ pillow-heif>=1.0.0
 opencv-python-headless>=4.10.0
 numpy>=1.26.0
 google-genai>=1.0.0
+pymupdf>=1.24.0
+pdfplumber>=0.11.0
+pytest>=8.0.0

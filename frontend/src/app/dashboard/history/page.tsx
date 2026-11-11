@@ -7,6 +7,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import PageContainer from "@/components/layout/PageContainer";
 import AnalysisDrawer from "@/components/analysis/AnalysisDrawer";
 import { useHistory } from "@/hooks/useHistory";
+import { normalizeMarkers } from "@/lib/markers";
 import { stripMarkdown } from "@/lib/utils";
 import type { HistoryItem, AnalysisResult } from "@/lib/types";
 
@@ -56,7 +57,7 @@ export default function ReportsHistoryPage() {
         nutrition: "",
         exercise: "",
       },
-      markers: item.markers || [],
+      markers: normalizeMarkers(item.markers),
       summary: item.summary ?? null,
     });
   }
@@ -65,7 +66,7 @@ export default function ReportsHistoryPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar activeHref="/dashboard/history" />
 
-      <PageContainer width="wide">
+      <PageContainer width="full" className="mx-auto max-w-[1600px]">
         {/* Breadcrumb Header */}
         <header className="mb-6">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">

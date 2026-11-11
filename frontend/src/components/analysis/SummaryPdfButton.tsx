@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Download, Loader2, X } from "lucide-react";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 type ButtonStatus = "idle" | "generating" | "success" | "error";
 type ToastState = { kind: "success" | "error"; message: string } | null;
@@ -10,9 +11,11 @@ type ToastState = { kind: "success" | "error"; message: string } | null;
 export default function SummaryPdfButton({
   reportId,
   disabled = false,
+  className,
 }: {
   reportId?: string;
   disabled?: boolean;
+  className?: string;
 }) {
   const [status, setStatus] = useState<ButtonStatus>("idle");
   const [toast, setToast] = useState<ToastState>(null);
@@ -69,14 +72,17 @@ export default function SummaryPdfButton({
         type="button"
         onClick={handleDownload}
         disabled={isDisabled}
-        className="mb-4 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
+        className={cn(
+          "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
       >
         {isGenerating ? (
           <Loader2 size={14} className="animate-spin" />
         ) : (
           <Download size={14} />
         )}
-        {isGenerating ? "Generating summary..." : "Generate Summary PDF"}
+        {isGenerating ? "Generating summary..." : "Generate summary PDF"}
       </button>
 
       {toast && (

@@ -23,11 +23,13 @@ STATUS_COLORS = {
     "low": colors.HexColor("#1d4ed8"),
     "high": colors.HexColor("#b91c1c"),
     "normal": colors.HexColor("#047857"),
+    "unknown": colors.HexColor("#475569"),
 }
 STATUS_BACKGROUNDS = {
     "low": colors.HexColor("#eff6ff"),
     "high": colors.HexColor("#fef2f2"),
     "normal": colors.HexColor("#ecfdf5"),
+    "unknown": colors.HexColor("#f8fafc"),
 }
 
 
@@ -177,7 +179,7 @@ def build_summary_pdf(
             textColor=colors.HexColor("#334155"),
         ),
     }
-    for status in ("low", "normal", "high"):
+    for status in ("low", "normal", "high", "unknown"):
         styles[f"status_{status}"] = ParagraphStyle(
             f"Status{status.title()}",
             parent=base["Normal"],

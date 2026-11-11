@@ -16,7 +16,7 @@ class MarkerSummary(BaseModel):
     @classmethod
     def normalize_status(cls, value: Any) -> str:
         normalized = str(value or "normal").strip().lower()
-        if normalized in {"low", "high", "normal"}:
+        if normalized in {"low", "high", "normal", "unknown"}:
             return normalized
         return "normal"
 
@@ -55,15 +55,19 @@ def validate_summary(
 def _marker_rows(markers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     rows = []
     for marker in markers:
-        value = marker.get("value")
+        value = marker.get("value_text")
+        if value in (None, ""):
+            value = marker.get("value")
         unit = marker.get("unit") or None
+        reference_range = marker.get("ref_raw") or None
         reference = marker.get("range")
-        reference_range = None
-        if isinstance(reference, (list, tuple)) and len(reference) == 2:
+        if not reference_range and isinstance(reference, (list, tuple)) and len(reference) == 2:
             reference_range = f"{reference[0]}–{reference[1]}"
+        if not reference_range and marker.get("ref_low") is not None and marker.get("ref_high") is not None:
+            reference_range = f"{marker['ref_low']}–{marker['ref_high']}"
 
-        status = str(marker.get("status", "Normal")).lower()
-        value_text = str(value)
+        status = str(marker.get("status", "unknown")).lower()
+        value_text = str(value if value is not None else "Not reported")
         note = f"{marker.get('name', 'Marker')} is {status}."
         if reference_range and status in {"low", "high"}:
             note = f"{marker.get('name', 'Marker')} is {status} relative to the reference range."
@@ -73,7 +77,7 @@ def _marker_rows(markers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 "value": value_text,
                 "unit": unit,
                 "reference_range": reference_range,
-                "status": status if status in {"low", "normal", "high"} else "normal",
+                "status": status if status in {"low", "normal", "high", "unknown"} else "unknown",
                 "note": note,
             }
         )

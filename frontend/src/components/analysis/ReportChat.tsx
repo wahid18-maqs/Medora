@@ -5,6 +5,7 @@ import { Send, Mic, RefreshCw, Loader2, Bot, User, Sparkles } from "lucide-react
 import { useReportChat } from "@/hooks/useReportChat";
 import { stripMarkdown } from "@/lib/utils";
 import type { Marker } from "@/lib/types";
+import { isFlaggedMarker } from "@/lib/markers";
 
 interface ReportChatProps {
   reportId: string;
@@ -17,28 +18,20 @@ export default function ReportChat({ reportId, markers = [] }: ReportChatProps) 
   const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const flaggedMarkers = markers.filter((marker) => marker.status !== "Normal");
-  const suggestions = Array.from(
-    new Set(
-      flaggedMarkers.length > 0
-        ? [
-            ...flaggedMarkers
-              .slice(0, 3)
-              .map(
-                (marker) =>
-                  `What does my ${marker.name} result (${marker.status.toLowerCase()}) mean?`
-              ),
-            "What should I ask my doctor about these markers?",
-            "How can I improve these results?",
-          ]
-        : [
-            "What are the main findings in my report?",
-            "Are any of my markers out of range?",
-            "What should I ask my doctor?",
-            "How can I improve these results?",
-          ]
-    )
-  ).slice(0, 4);
+  const flaggedMarkers = markers.filter(isFlaggedMarker);
+  const suggestions =
+    flaggedMarkers.length > 0
+      ? flaggedMarkers
+          .slice(0, 3)
+          .map(
+            (marker) =>
+              `What does my ${marker.name} result (${marker.status}) mean?`
+          )
+      : [
+          "What are the main findings in my report?",
+          "Are any of my markers out of range?",
+          "What should I ask my doctor?",
+        ];
 
   const scrollToBottom = () => {
     const container = messagesContainerRef.current;

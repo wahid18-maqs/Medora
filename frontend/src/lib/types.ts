@@ -45,7 +45,7 @@ export interface MarkerSummary {
   value: string;
   unit?: string | null;
   reference_range?: string | null;
-  status: "low" | "normal" | "high";
+  status: "low" | "normal" | "high" | "unknown";
   note: string;
 }
 
@@ -88,12 +88,23 @@ export interface PaginatedHistory {
   pages: number;
 }
 
+export type MarkerStatus = "low" | "high" | "normal" | "unknown";
+
 export interface Marker {
   name: string;
-  value: number;
+  value: number | null;
+  value_text: string;
   unit: string;
-  range: [number, number];
-  status: "Low" | "High" | "Normal";
+  ref_raw: string;
+  ref_low: number | null;
+  ref_high: number | null;
+  flag_in_report?: string | null;
+  page?: number | null;
+  confidence?: number;
+  status: MarkerStatus;
+  needs_review?: boolean;
+  plausibility_warning?: string | null;
+  range?: [number, number] | null;
 }
 
 export interface AnalysisResult {

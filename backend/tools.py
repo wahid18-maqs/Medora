@@ -11,6 +11,7 @@ from crewai_tools import SerperDevTool
 from pydantic import BaseModel, Field
 from langchain_community.document_loaders import PyPDFLoader
 from crewai.tools import BaseTool
+from extraction import build_marker_warning, normalize_marker
 
 try:
     import pillow_heif
@@ -373,21 +374,31 @@ def extract_report_images(files: List[Tuple[str, bytes, str]]) -> Dict[str, Any]
             )
 
     markers: List[Dict[str, Any]] = []
+    internal_markers = []
     for item in payload.markers:
-        marker_name = str(item.marker or "").strip()
-        if not marker_name:
+        normalized = normalize_marker(
+            {
+                "name": item.marker,
+                "value": item.value,
+                "value_text": _stringify_value(item.value),
+                "unit": item.unit,
+                "ref_raw": item.reference_range,
+                "confidence": item.confidence,
+            }
+        )
+        if normalized is None:
             continue
-        value_text = _stringify_value(item.value)
-        if not value_text:
-            continue
+        internal_markers.append(normalized)
         markers.append(
             {
-                "marker": marker_name,
-                "value": value_text,
-                "unit": str(item.unit or "").strip(),
-                "reference_range": str(item.reference_range or "").strip(),
-                "confidence": round(float(item.confidence), 2),
-                "plausibility_warning": _plausibility_warning(marker_name, value_text),
+                "marker": normalized.name,
+                "value": normalized.value_text,
+                "unit": normalized.unit,
+                "reference_range": normalized.ref_raw,
+                "confidence": normalized.confidence,
+                "plausibility_warning": normalized.plausibility_warning,
+                "status": normalized.status,
+                "needs_review": normalized.needs_review,
             }
         )
 
@@ -396,12 +407,7 @@ def extract_report_images(files: List[Tuple[str, bytes, str]]) -> Dict[str, Any]
             "No lab values could be detected. Please upload a clearer photo of your report."
         )
 
-    marker_warning = None
-    if len(markers) <= 2:
-        marker_warning = (
-            f"Only {len(markers)} marker{'s' if len(markers) != 1 else ''} could be read from "
-            f"this image. Results may be incomplete."
-        )
+    marker_warning = build_marker_warning(internal_markers, max(1, len(files)))
 
     return {
         "status": "success",
@@ -448,36 +454,13 @@ def default_reference_range(marker: str) -> Optional[Tuple[float, float]]:
 
 
 def to_internal_marker(marker: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    name = str(marker.get("marker") or "").strip()
-    value_text = _stringify_value(marker.get("value", ""))
-    if not name or not value_text:
+    normalized = normalize_marker(marker)
+    if normalized is None:
         return None
-
-    value = _first_number(value_text)
-    if value is None:
-        return None
-
-    reference_range = parse_reference_range(str(marker.get("reference_range") or ""))
-    if not reference_range:
-        reference_range = default_reference_range(name)
-    if not reference_range:
-        reference_range = (0.0, max(value * 1.5, value + 1.0))
-
-    low, high = reference_range
-    if value < low:
-        status = "Low"
-    elif value > high:
-        status = "High"
-    else:
-        status = "Normal"
-
-    return {
-        "name": name,
-        "value": value,
-        "unit": str(marker.get("unit") or "").strip(),
-        "range": [low, high],
-        "status": status,
-    }
+    row = normalized.model_dump()
+    if normalized.ref_low is not None and normalized.ref_high is not None:
+        row["range"] = [normalized.ref_low, normalized.ref_high]
+    return row
 
 
 class BloodReportImageInput(BaseModel):

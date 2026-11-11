@@ -26,13 +26,12 @@ export default function ContextualChatPanel({
     <>
       {/* Mobile backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/40 lg:hidden print:hidden"
+        className="fixed inset-0 z-40 bg-black/40 print:hidden"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Desktop: sticky right column. Mobile: full-screen overlay. */}
-      <div className="fixed left-0 top-0 z-50 h-dvh w-full lg:sticky lg:left-auto lg:top-0 lg:z-30 lg:h-dvh lg:w-[360px] lg:shrink-0 xl:w-[400px] print:hidden">
+      <div className="fixed right-0 top-0 z-50 h-dvh w-full sm:w-[400px] print:hidden">
         {/* Collapse toggle button on the left edge (matches sidebar collapse pattern) */}
         <button
           onClick={onClose}
