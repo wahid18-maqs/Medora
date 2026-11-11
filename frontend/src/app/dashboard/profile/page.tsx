@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Sidebar from "@/components/layout/Sidebar";
 import UserProfileSummaryCard from "@/components/profile/UserProfileSummaryCard";
 import ContactInsuranceCard from "@/components/profile/ContactInsuranceCard";
@@ -30,13 +29,6 @@ export default function HealthProfilePage() {
       <main className="min-w-0 flex-1 py-8">
         <div className="mx-auto w-full max-w-6xl px-4 lg:px-8">
           <header className="mb-6">
-            <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <Link href="/dashboard" className="transition-colors hover:text-primary-dark">
-                Dashboard
-              </Link>
-              <span>/</span>
-              <span className="font-semibold text-primary-dark">Health Profile</span>
-            </div>
             <h1 className="text-2xl font-semibold text-primary-dark">Health Profile</h1>
           </header>
 

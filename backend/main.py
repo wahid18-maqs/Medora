@@ -5,6 +5,7 @@ import uuid
 import re
 import json
 import asyncio
+import logging
 from dotenv import load_dotenv
 import datetime
 from typing import List, Dict, Any, Optional, Tuple
@@ -27,7 +28,10 @@ from summary_pdf import build_summary_pdf
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="Blood Test Report Analyser")
+logger = logging.getLogger(__name__)
 
 # Add CORS Middleware
 app.add_middleware(
@@ -385,9 +389,12 @@ def _parse_json_payload(text: str) -> Dict[str, Any]:
 
 
 def _marker_warning(
-    markers: List[Dict[str, Any]], source_label: str, page_count: int = 1
+    markers: List[Dict[str, Any]],
+    source_label: str,
+    page_count: int = 1,
+    candidate_count: Optional[int] = None,
 ) -> Optional[str]:
-    warning = build_marker_warning(markers, page_count)
+    warning = build_marker_warning(markers, page_count, candidate_count)
     if warning:
         return warning
     return None
@@ -403,9 +410,13 @@ async def _complete_analysis(
     source_type: str,
     report_date: Optional[str] = None,
     page_count: int = 1,
+    marker_candidate_count: Optional[int] = None,
 ) -> Dict[str, Any]:
     marker_warning = _marker_warning(
-        markers, "image" if source_type == "Image" else "report", page_count
+        markers,
+        "image" if source_type == "Image" else "report",
+        page_count,
+        marker_candidate_count,
     )
 
     now = datetime.datetime.utcnow()
@@ -575,6 +586,7 @@ async def analyze_blood_report(
             source_type="PDF",
             report_date=extraction.get("report_date"),
             page_count=extraction.get("page_count") or 1,
+            marker_candidate_count=extraction.get("marker_candidate_count"),
         )
 
     except Exception as e:
@@ -653,6 +665,14 @@ async def extract_image_report(
         result["file_names"] = original_names
         result["query"] = query.strip() or "Summarise my Blood Test Report"
         return result
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Image report extraction failed")
+        raise HTTPException(
+            status_code=503,
+            detail="Image extraction is temporarily unavailable. Please try again later.",
+        )
     finally:
         for temp_path in temp_paths:
             try:

@@ -67,15 +67,7 @@ export default function ReportsHistoryPage() {
       <Sidebar activeHref="/dashboard/history" />
 
       <PageContainer width="full" className="mx-auto max-w-[1600px]">
-        {/* Breadcrumb Header */}
         <header className="mb-6">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <Link href="/dashboard" className="hover:text-primary-dark transition-colors">
-              Dashboard
-            </Link>
-            <span>/</span>
-            <span className="font-semibold text-primary-dark">Report History</span>
-          </div>
           <h1 className="text-2xl font-semibold text-primary-dark">Reports History</h1>
         </header>
 

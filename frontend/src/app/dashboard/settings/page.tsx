@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Sidebar from "@/components/layout/Sidebar";
 import PageContainer from "@/components/layout/PageContainer";
 import AccountCard from "@/components/settings/AccountCard";
@@ -14,13 +13,6 @@ export default function SettingsPage() {
 
       <PageContainer width="full" className="mx-auto max-w-[1600px]">
         <header className="mb-8">
-          <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href="/dashboard" className="transition-colors hover:text-primary">
-              Dashboard
-            </Link>
-            <span>/</span>
-            <span className="font-semibold text-foreground">Settings</span>
-          </div>
           <h1 className="text-2xl font-semibold text-primary-dark">Settings</h1>
         </header>
 

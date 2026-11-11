@@ -14,7 +14,8 @@ Rules:\n\
 2. Use the exact status values from the JSON (low, normal, high, unknown). Do not contradict them.\n\
 3. If the list contains only a few markers, say clearly that the analysis is limited to those markers.\n\
 4. If the list is empty, state that no markers could be extracted and do not invent findings.\n\
-5. Do not write a letter, salutation, or sign-off. Return concise markdown with a '## Key findings' section first.",
+5. Do not recommend medications, supplements, or diagnoses. For follow-up, use the phrase 'worth discussing with your doctor'.\n\
+6. Do not write a letter, salutation, or sign-off. Return concise markdown with a '## Key findings' section first.",
 
     expected_output="""Markdown only, with:
 ## Key findings
@@ -22,7 +23,7 @@ Rules:\n\
 ## Medical interpretation
 - Evidence-based interpretation limited to those markers
 ## Next steps
-- Clinical follow-up suggestions based only on the extracted markers""",
+- Clinical follow-up suggestions based only on the extracted markers, using 'worth discussing with your doctor'""",
 
     agent=doctor,
     tools=[nutrition_tool, exercise_tool],
@@ -40,13 +41,14 @@ Rules:\n\
 2. Match the exact status values in the JSON and do not claim a normal marker is abnormal or vice versa.\n\
 3. If only a few markers were extracted, state that the nutrition guidance is limited to those markers.\n\
 4. If the list is empty, say that no marker-specific nutrition guidance can be provided.\n\
-5. Do not write a letter, salutation, or sign-off. Return concise markdown with a '## Key findings' section first.",
+5. Do not recommend medications, supplements, or diagnoses. For follow-up, use the phrase 'worth discussing with your doctor'.\n\
+6. Do not write a letter, salutation, or sign-off. Return concise markdown with a '## Key findings' section first.",
 
     expected_output="""Markdown only, with:
 ## Key findings
 - Extracted markers relevant to nutrition and their exact statuses
 ## Nutrition guidance
-- Foods, dietary changes, or supplements tied only to those markers
+- Foods and dietary changes tied only to those markers
 ## Practical next steps
 - Brief, evidence-based actions""",
 
@@ -66,7 +68,8 @@ Rules:\n\
 2. Use the exact status values from the JSON and do not contradict them.\n\
 3. If only a few markers were extracted, state that the exercise guidance is limited to those markers.\n\
 4. If the list is empty, say that no marker-specific exercise guidance can be provided.\n\
-5. Do not write a letter, salutation, or sign-off. Return concise markdown with a '## Key findings' section first.",
+5. Do not recommend medications, supplements, or diagnoses. For follow-up, use the phrase 'worth discussing with your doctor'.\n\
+6. Do not write a letter, salutation, or sign-off. Return concise markdown with a '## Key findings' section first.",
 
     expected_output="""Markdown only, with:
 ## Key findings
@@ -92,7 +95,8 @@ Rules:\n\
 2. Use the exact status values from the JSON (low, normal, high, unknown).\n\
 3. If only one marker was extracted, explicitly note that the review is limited to that marker.\n\
 4. If the list is empty, state that no marker-specific questions can be generated.\n\
-5. Do not write a letter, salutation, or sign-off. Return concise markdown.",
+5. Do not recommend medications, supplements, or diagnoses. Use the phrase 'worth discussing with your doctor'.\n\
+6. Do not write a letter, salutation, or sign-off. Return concise markdown.",
 
     expected_output="""Markdown only, with:
 ## Questions for your doctor
@@ -117,8 +121,8 @@ Completed agent findings are available in the task context. Do not introduce inf
 Rules:\n\
 1. Only include marker names, values, units, reference ranges, and statuses that appear in the authoritative JSON. Never invent a marker.\n\
 2. Copy values, units, reference ranges, and statuses exactly from the JSON. Do not round or reinterpret them.\n\
-3. Do not provide a diagnosis, medication names or dosages, or certainty about causes.\n\
-4. Use plain 8th-grade language.\n\
+3. Do not provide a diagnosis, medication names or dosages, supplements, or certainty about causes.\n\
+4. Use plain 8th-grade language. Use the phrase 'worth discussing with your doctor' for follow-up advice.\n\
 5. Write a 3-4 sentence overview.\n\
 6. Return at most 5 key findings, with abnormal markers first.\n\
 7. Write exactly one sentence for each marker note.\n\

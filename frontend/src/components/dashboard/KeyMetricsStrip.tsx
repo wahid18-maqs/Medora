@@ -16,6 +16,14 @@ export default function KeyMetricsStrip({ markers }: KeyMetricsStripProps) {
   const normalPercent = total > 0 ? Math.round((normalCount / total) * 100) : 0;
   const unknownCount = markers.length - total;
 
+  const flaggedNames = (items: Marker[]) => {
+    if (items.length === 0) return null;
+    if (items.length <= 2) return items.map((marker) => marker.name).join(", ");
+    return `${items[0].name} +${items.length - 1}`;
+  };
+  const highLabel = flaggedNames(highMarkers);
+  const lowLabel = flaggedNames(lowMarkers);
+
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
@@ -48,8 +56,8 @@ export default function KeyMetricsStrip({ markers }: KeyMetricsStripProps) {
         <p className="mt-1 text-[26px] font-bold leading-tight text-red-600 dark:text-red-400">
           {highMarkers.length}
         </p>
-        <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
-          {highMarkers.length > 0 ? highMarkers[0].name : "No elevated markers"}
+        <p className="mt-0.5 truncate text-[13px] text-muted-foreground" title={highMarkers.map((marker) => marker.name).join(", ")}>
+          {highLabel || "No elevated markers"}
         </p>
       </div>
 
@@ -58,8 +66,8 @@ export default function KeyMetricsStrip({ markers }: KeyMetricsStripProps) {
         <p className="mt-1 text-[26px] font-bold leading-tight text-amber-600 dark:text-amber-400">
           {lowMarkers.length}
         </p>
-        <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
-          {lowMarkers.length > 0 ? lowMarkers[0].name : "No low markers"}
+        <p className="mt-0.5 truncate text-[13px] text-muted-foreground" title={lowMarkers.map((marker) => marker.name).join(", ")}>
+          {lowLabel || "No low markers"}
         </p>
       </div>
     </div>
