@@ -14,7 +14,7 @@ from crewai import Crew, Process
 from agents import doctor, verifier, nutritionist, exercise_specialist, summary_agent, image_extractor
 from task import help_patients, verification, nutrition_analysis, exercise_planning, summary_task, image_extraction_task
 from db import reports_collection
-from clean_text import sanitize_markdown
+from clean_text import sanitize_ai_data, sanitize_markdown
 from langchain_community.document_loaders import PyPDFLoader
 from auth import router as auth_router
 from profile import router as profile_router, get_current_user_email
@@ -763,6 +763,7 @@ async def get_history(
             agents_dict = r.get("agents", {})
             if isinstance(agents_dict, dict) and "medical" not in agents_dict:
                 agents_dict["medical"] = r.get("analysis", "")
+            agents_dict = sanitize_ai_data(agents_dict)
 
             history_items.append({
                 "analysis_id": r.get("analysis_id", "BTA-2026-001"),
@@ -772,7 +773,7 @@ async def get_history(
                 "status": r.get("status", "Completed - Reviewed"),
                 "file": r.get("file_name"),
                 "query": r.get("query"),
-                "analysis": r.get("analysis", ""),
+                "analysis": sanitize_markdown(r.get("analysis", "")),
                 "agents": agents_dict,
                 "markers": r.get("markers", []),
                 "source_type": r.get("source_type", "PDF"),
@@ -804,6 +805,7 @@ async def get_history(
             agents_dict = r.get("agents", {})
             if isinstance(agents_dict, dict) and "medical" not in agents_dict:
                 agents_dict["medical"] = r.get("analysis", "")
+            agents_dict = sanitize_ai_data(agents_dict)
 
             history_items.append({
                 "analysis_id": r.get("analysis_id", f"BTA-2026-{seq:03d}"),
@@ -813,7 +815,7 @@ async def get_history(
                 "status": r.get("status", "Completed - Reviewed"),
                 "file": r.get("file_name"),
                 "query": r.get("query"),
-                "analysis": r.get("analysis", ""),
+                "analysis": sanitize_markdown(r.get("analysis", "")),
                 "agents": agents_dict,
                 "markers": r.get("markers", []),
                 "source_type": r.get("source_type", "PDF"),

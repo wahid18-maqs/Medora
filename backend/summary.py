@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from clean_text import sanitize_markdown
+
 
 class MarkerSummary(BaseModel):
     name: str
@@ -11,6 +13,11 @@ class MarkerSummary(BaseModel):
     reference_range: Optional[str] = None
     status: str = "normal"
     note: str
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def clean_note(cls, value: Any) -> str:
+        return sanitize_markdown(str(value or ""))
 
     @field_validator("status", mode="before")
     @classmethod
@@ -28,6 +35,20 @@ class ReportSummary(BaseModel):
     lifestyle_notes: List[str] = Field(default_factory=list)
     questions_for_doctor: List[str] = Field(default_factory=list)
     limitations: str = ""
+
+    @field_validator("overview", "limitations", mode="before")
+    @classmethod
+    def clean_text(cls, value: Any) -> str:
+        return sanitize_markdown(str(value or ""))
+
+    @field_validator(
+        "key_findings", "lifestyle_notes", "questions_for_doctor", mode="before"
+    )
+    @classmethod
+    def clean_text_list(cls, value: Any) -> List[str]:
+        items = value if isinstance(value, list) else [value] if value is not None else []
+        cleaned = [sanitize_markdown(str(item)) for item in items]
+        return [item for item in cleaned if item]
 
 
 def _normalize_name(name: str) -> str:

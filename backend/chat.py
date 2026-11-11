@@ -7,7 +7,7 @@ from crewai import Crew, Process
 from agents import qa_agent
 from task import qa_task
 from db import reports_collection, chat_messages_collection
-from clean_text import strip_markdown, sanitize_markdown
+from clean_text import strip_markdown, sanitize_markdown, sanitize_ai_data
 from profile import get_current_user_email
 from store import IN_MEMORY_REPORTS
 
@@ -126,7 +126,7 @@ def get_report(report_id: str, user_email: str = Depends(get_current_user_email)
         "analysis": sanitize_markdown(report.get("analysis") or ""),
         "agents": agents,
         "markers": report.get("markers", []),
-        "summary": report.get("summary"),
+        "summary": sanitize_ai_data(report.get("summary")),
         "source_type": report.get("source_type", "PDF"),
         "report_date": report.get("report_date"),
         "timestamp": timestamp or "",
