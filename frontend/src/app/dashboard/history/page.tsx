@@ -47,6 +47,8 @@ export default function ReportsHistoryPage() {
       reportType: item.report_type,
       diagnosticCenter: item.diagnostic_center,
       markerWarning: item.marker_warning,
+      sourceType: item.source_type || "PDF",
+      reportDate: item.report_date ?? null,
       timestamp: item.timestamp,
       agents: item.agents || {
         medical: item.analysis,
@@ -140,6 +142,7 @@ export default function ReportsHistoryPage() {
                   <th className="font-medium px-6 py-3.5">Analysis ID</th>
                   <th className="font-medium px-6 py-3.5">Date Analyzed</th>
                   <th className="font-medium px-6 py-3.5">Report Type</th>
+                  <th className="font-medium px-6 py-3.5">Source</th>
                   <th className="font-medium px-6 py-3.5">Diagnostic Center</th>
                   <th className="font-medium px-6 py-3.5">Status</th>
                   <th className="font-medium px-6 py-3.5">Doctor Notes</th>
@@ -149,14 +152,14 @@ export default function ReportsHistoryPage() {
               <tbody className="divide-y divide-border">
                 {isLoading && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                    <td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">
                       Loading report history...
                     </td>
                   </tr>
                 )}
                 {!isLoading && items.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">
+                    <td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">
                       No reports found matching your criteria.
                     </td>
                   </tr>
@@ -185,6 +188,11 @@ export default function ReportsHistoryPage() {
                         <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{formattedDate}</td>
                         <td className="px-6 py-4 font-medium text-foreground">
                           {item.report_type || "Routine"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                            {item.source_type || "PDF"}
+                          </span>
                         </td>
                         <td className="px-6 py-4 text-muted-foreground">
                           {item.diagnostic_center || "Central Health Lab"}

@@ -1,6 +1,6 @@
 from crewai import Task
-from agents import doctor, verifier, nutritionist, exercise_specialist, qa_agent
-from tools import search_tool, blood_test_tool,nutrition_tool, exercise_tool
+from agents import doctor, verifier, nutritionist, exercise_specialist, image_extractor, qa_agent
+from tools import search_tool, blood_test_tool,nutrition_tool, exercise_tool, image_extraction_tool
 
 ## Creating a task to help solve user's query
 help_patients = Task(
@@ -103,6 +103,24 @@ Rules:\n\
     tools=[],
     input_variables=["report", "markers_json"],
     async_execution=False
+)
+
+image_extraction_task = Task(
+    description="Extract structured laboratory values from the uploaded blood test report images.\n\
+Image paths (one per line):\n{image_paths}\n\n\
+Use the extract_blood_report_image tool exactly once with those paths.\n\
+Return ONLY the JSON object produced by the tool. Do not add commentary, markdown fences, or extra text.\n\
+If the tool returns an error JSON object, return that error JSON unchanged.",
+    expected_output=(
+        'A single JSON object: {"status":"success","lab_name":string|null,'
+        '"report_date":string|null,"markers":[{"marker":string,"value":string,'
+        '"unit":string,"reference_range":string,"confidence":number}],'
+        '"marker_warning":string|null,"file_names":[string]}'
+    ),
+    agent=image_extractor,
+    tools=[image_extraction_tool],
+    input_variables=["image_paths"],
+    async_execution=False,
 )
 
 qa_task = Task(

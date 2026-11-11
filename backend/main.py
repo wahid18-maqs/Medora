@@ -6,10 +6,11 @@ import re
 import json
 from dotenv import load_dotenv
 import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel, Field
 from crewai import Crew, Process
-from agents import doctor, verifier, nutritionist, exercise_specialist
-from task import help_patients, verification, nutrition_analysis, exercise_planning
+from agents import doctor, verifier, nutritionist, exercise_specialist, image_extractor
+from task import help_patients, verification, nutrition_analysis, exercise_planning, image_extraction_task
 from db import reports_collection
 from clean_text import sanitize_markdown
 from langchain_community.document_loaders import PyPDFLoader
@@ -18,6 +19,7 @@ from profile import router as profile_router, get_current_user_email
 from settings import router as settings_router
 from support import router as support_router
 from chat import router as chat_router
+from tools import to_internal_marker
 
 load_dotenv()
 
@@ -42,6 +44,24 @@ app.include_router(profile_router)
 app.include_router(settings_router)
 app.include_router(support_router)
 app.include_router(chat_router)
+
+
+class ConfirmedMarkerPayload(BaseModel):
+    marker: str
+    value: Any
+    unit: str = ""
+    reference_range: str = ""
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+    plausibility_warning: Optional[str] = None
+
+
+class ConfirmImagePayload(BaseModel):
+    markers: List[ConfirmedMarkerPayload] = Field(default_factory=list)
+    lab_name: Optional[str] = None
+    report_date: Optional[str] = None
+    file_names: List[str] = Field(default_factory=list)
+    query: str = "Summarise my Blood Test Report"
+
 
 def extract_text_from_pdf(file_path: str) -> str:
     try:
@@ -228,6 +248,100 @@ async def run_crew_async(query: str, report: str, markers: List[Dict[str, Any]])
         "exercise": f"## Key findings\n{findings}\n\n## Exercise plan\nChoose activity appropriate for the markers above and confirm safety with your clinician."
     }
 
+
+def _parse_json_payload(text: str) -> Dict[str, Any]:
+    cleaned = (text or "").strip()
+    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+    decoder = json.JSONDecoder()
+    for index, character in enumerate(cleaned):
+        if character != "{":
+            continue
+        try:
+            payload, _ = decoder.raw_decode(cleaned[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return payload
+    raise ValueError("No JSON object found")
+
+
+def _marker_warning(markers: List[Dict[str, Any]], source_label: str) -> Optional[str]:
+    if len(markers) == 1:
+        return f"Only 1 marker could be read from this {source_label}. Results may be incomplete."
+    if len(markers) == 0:
+        return f"No markers could be read from this {source_label}. Results may be incomplete."
+    return None
+
+
+async def _complete_analysis(
+    query: str,
+    report_text: str,
+    markers: List[Dict[str, Any]],
+    user_email: str,
+    file_name: str,
+    diagnostic_center: str,
+    source_type: str,
+    report_date: Optional[str] = None,
+) -> Dict[str, Any]:
+    marker_warning = _marker_warning(markers, "image" if source_type == "Image" else "report")
+
+    agent_outputs = await run_crew_async(
+        query=query.strip() or "Summarise my Blood Test Report",
+        report=report_text,
+        markers=markers,
+    )
+    agent_outputs = {key: sanitize_markdown(value) for key, value in agent_outputs.items()}
+
+    now = datetime.datetime.utcnow()
+    year = now.year
+    try:
+        db_count = reports_collection.count_documents({"user_email": user_email})
+    except Exception:
+        db_count = len([r for r in IN_MEMORY_REPORTS if r.get("user_email") == user_email])
+    seq_num = (db_count + 1) % 1000
+    analysis_id = f"BTA-{year}-{seq_num:03d}"
+
+    doc = {
+        "analysis_id": analysis_id,
+        "user_email": user_email,
+        "report_type": "Routine",
+        "diagnostic_center": diagnostic_center or "Not specified",
+        "status": "Completed - Reviewed",
+        "query": query.strip() or "Summarise my Blood Test Report",
+        "analysis": agent_outputs["medical"],
+        "agents": agent_outputs,
+        "markers": markers,
+        "marker_warning": marker_warning,
+        "file_name": file_name,
+        "source_type": source_type,
+        "timestamp": now.isoformat(),
+    }
+    if report_date:
+        doc["report_date"] = report_date
+
+    try:
+        reports_collection.insert_one(doc)
+    except Exception as db_err:
+        print("MongoDB insert fallback to memory:", str(db_err))
+        IN_MEMORY_REPORTS.insert(0, doc)
+
+    return {
+        "status": "success",
+        "analysis_id": analysis_id,
+        "report_type": doc["report_type"],
+        "diagnostic_center": doc["diagnostic_center"],
+        "query": doc["query"],
+        "analysis": agent_outputs["medical"],
+        "agents": agent_outputs,
+        "markers": markers,
+        "marker_warning": marker_warning,
+        "file_processed": file_name,
+        "source_type": source_type,
+        "report_date": report_date,
+        "timestamp": now.isoformat(),
+    }
+
 # Root health check
 @app.get("/")
 async def root():
@@ -260,71 +374,18 @@ async def analyze_blood_report(
                 "message": "The PDF appears to be empty or unreadable."
             }
 
-        # Extract markers first so every AI prompt is constrained to the same list.
         markers = parse_markers_from_text(report_text)
-        marker_warning = None
-        if len(markers) == 1:
-            marker_warning = "Only 1 marker could be read from this report. Results may be incomplete."
-        elif len(markers) == 0:
-            marker_warning = "No markers could be read from this report. Results may be incomplete."
-
-        # Process with CrewAI async sequential agents
-        agent_outputs = await run_crew_async(
-            query=query.strip(),
-            report=report_text,
-            markers=markers,
-        )
-        agent_outputs = {key: sanitize_markdown(value) for key, value in agent_outputs.items()}
-
-        now = datetime.datetime.utcnow()
-        # Generate stable Analysis ID format #BTA-YYYY-NNN at insert time
-        year = now.year
-        try:
-            db_count = reports_collection.count_documents({"user_email": user_email})
-        except Exception:
-            db_count = len([r for r in IN_MEMORY_REPORTS if r.get("user_email") == user_email])
-        seq_num = (db_count + 1) % 1000
-        analysis_id = f"BTA-{year}-{seq_num:03d}"
-
-        # TODO: Classify report_type based on PDF content analysis (e.g. Routine, Comprehensive, Specialized)
-        report_type = "Routine"
         diagnostic_center = extract_lab_name(report_text)
 
-        doc = {
-            "analysis_id": analysis_id,
-            "user_email": user_email,
-            "report_type": report_type,
-            "diagnostic_center": diagnostic_center,
-            "status": "Completed - Reviewed",
-            "query": query,
-            "analysis": agent_outputs["medical"],
-            "agents": agent_outputs,
-            "markers": markers,
-            "marker_warning": marker_warning,
-            "file_name": file.filename,
-            "timestamp": now.isoformat()
-        }
-
-        # Try inserting to MongoDB, fallback to in-memory store if DB error
-        try:
-            reports_collection.insert_one(doc)
-        except Exception as db_err:
-            print("MongoDB insert fallback to memory:", str(db_err))
-            IN_MEMORY_REPORTS.insert(0, doc)
-
-        return {
-            "status": "success",
-            "analysis_id": analysis_id,
-            "report_type": report_type,
-            "diagnostic_center": diagnostic_center,
-            "query": query,
-            "analysis": agent_outputs["medical"],
-            "agents": agent_outputs,
-            "markers": markers,
-            "marker_warning": marker_warning,
-            "file_processed": file.filename,
-            "timestamp": now.isoformat()
-        }
+        return await _complete_analysis(
+            query=query,
+            report_text=report_text,
+            markers=markers,
+            user_email=user_email,
+            file_name=file.filename or "blood_test_report.pdf",
+            diagnostic_center=diagnostic_center,
+            source_type="PDF",
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
@@ -335,6 +396,124 @@ async def analyze_blood_report(
                 os.remove(file_path)
             except:
                 pass
+
+
+@app.post("/api/analyze/image")
+async def extract_image_report(
+    files: List[UploadFile] = File(...),
+    query: str = Form(default="Summarise my Blood Test Report"),
+    user_email: str = Depends(get_current_user_email),
+):
+    if not files:
+        raise HTTPException(status_code=400, detail="Please add at least one report image.")
+    if len(files) > 6:
+        raise HTTPException(status_code=400, detail="Please upload no more than 6 images.")
+
+    os.makedirs("data", exist_ok=True)
+    temp_paths: List[str] = []
+    original_names: List[str] = []
+
+    try:
+        for upload in files:
+            content = await upload.read()
+            if len(content) > 10 * 1024 * 1024:
+                raise HTTPException(status_code=400, detail="Each image must be 10 MB or smaller.")
+
+            original_name = upload.filename or "report-image"
+            extension = os.path.splitext(original_name.lower())[1] or ".jpg"
+            if extension not in {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Please upload JPG, PNG, WebP, or HEIC images.",
+                )
+
+            temp_path = f"data/report_image_{uuid.uuid4()}{extension}"
+            with open(temp_path, "wb") as handle:
+                handle.write(content)
+            temp_paths.append(temp_path)
+            original_names.append(original_name)
+
+        from agents import gemini_llm, groq_fallback_llm, set_agents_llm
+
+        set_agents_llm(gemini_llm or groq_fallback_llm)
+        extraction_crew = Crew(
+            agents=[image_extractor],
+            tasks=[image_extraction_task],
+            process=Process.sequential,
+            verbose=False,
+        )
+        crew_output = await extraction_crew.kickoff_async(
+            {"image_paths": "\n".join(temp_paths)}
+        )
+
+        try:
+            result = _parse_json_payload(str(crew_output))
+        except Exception:
+            raise HTTPException(
+                status_code=400,
+                detail="We could not read structured values from the image. Please upload a clearer photo.",
+            )
+
+        if result.get("status") == "error":
+            raise HTTPException(
+                status_code=400,
+                detail=result.get("message") or "Could not read the report image. Please try again.",
+            )
+
+        result["file_names"] = original_names
+        result["query"] = query.strip() or "Summarise my Blood Test Report"
+        return result
+    finally:
+        for temp_path in temp_paths:
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+
+
+@app.post("/api/analyze/confirm")
+async def analyze_confirmed_image(
+    payload: ConfirmImagePayload,
+    user_email: str = Depends(get_current_user_email),
+):
+    internal_markers: List[Dict[str, Any]] = []
+    for row in payload.markers:
+        marker = to_internal_marker(row.model_dump())
+        if marker:
+            internal_markers.append(marker)
+
+    if not internal_markers:
+        raise HTTPException(
+            status_code=400,
+            detail="Please keep at least one marker with a readable numeric value.",
+        )
+
+    lab_name = (payload.lab_name or "").strip() or "Not specified"
+    report_date = (payload.report_date or "").strip() or None
+    file_name = ", ".join([name for name in payload.file_names if name]) or "Report images"
+    report_lines = [
+        "Report source: image upload",
+        f"Laboratory: {lab_name}",
+        f"Report date: {report_date or 'Not specified'}",
+        "Confirmed markers:",
+    ]
+    for marker in internal_markers:
+        report_lines.append(
+            f"- {marker['name']}: {marker['value']} {marker['unit']} "
+            f"(reference {marker['range'][0]}-{marker['range'][1]}, status {marker['status']})"
+        )
+
+    return await _complete_analysis(
+        query=payload.query,
+        report_text="\n".join(report_lines),
+        markers=internal_markers,
+        user_email=user_email,
+        file_name=file_name,
+        diagnostic_center=lab_name,
+        source_type="Image",
+        report_date=report_date,
+    )
+
 
 @app.get("/history")
 async def get_history(
@@ -384,6 +563,8 @@ async def get_history(
                 "analysis": r.get("analysis", ""),
                 "agents": agents_dict,
                 "markers": r.get("markers", []),
+                "source_type": r.get("source_type", "PDF"),
+                "report_date": r.get("report_date"),
                 "timestamp": r.get("timestamp").isoformat() if isinstance(r.get("timestamp"), datetime.datetime) else str(r.get("timestamp"))
             })
     except Exception as e:
@@ -423,6 +604,8 @@ async def get_history(
                 "analysis": r.get("analysis", ""),
                 "agents": agents_dict,
                 "markers": r.get("markers", []),
+                "source_type": r.get("source_type", "PDF"),
+                "report_date": r.get("report_date"),
                 "timestamp": str(r.get("timestamp"))
             })
 

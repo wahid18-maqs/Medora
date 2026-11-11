@@ -9,7 +9,7 @@ except Exception:
     pass
 
 from crewai import Agent, LLM
-from tools import blood_test_tool, nutrition_tool, exercise_tool, search_tool
+from tools import blood_test_tool, nutrition_tool, exercise_tool, search_tool, image_extraction_tool
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
@@ -33,7 +33,7 @@ def set_agents_llm(target_llm):
     """Switch LLM across all active agents dynamically."""
     if not target_llm:
         return
-    for agent in [doctor, verifier, nutritionist, exercise_specialist, qa_agent]:
+    for agent in [doctor, verifier, nutritionist, exercise_specialist, image_extractor, qa_agent]:
         agent.llm = target_llm
 
 
@@ -105,6 +105,23 @@ exercise_specialist = Agent(
     tools=[blood_test_tool, exercise_tool],
     llm=llm,
     max_iter=1,
+    max_rpm=50,
+    allow_delegation=False
+)
+
+image_extractor = Agent(
+    role="Blood Report Image Extractor",
+    goal="Transcribe laboratory values from report photos accurately and without inventing data",
+    verbose=False,
+    memory=False,
+    backstory=(
+        "You are a medical document transcription specialist. You read blood test report photos, "
+        "use the image extraction tool, and return only structured JSON. You never guess values, "
+        "and you preserve units and reference ranges exactly as printed."
+    ),
+    tools=[image_extraction_tool],
+    llm=llm,
+    max_iter=2,
     max_rpm=50,
     allow_delegation=False
 )

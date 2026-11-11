@@ -1,4 +1,11 @@
-import type { HistoryItem, Marker, PaginatedHistory } from "./types";
+import type {
+  ConfirmImagePayload,
+  HistoryItem,
+  ImageExtractionResponse,
+  Marker,
+  PaginatedHistory,
+  SourceType,
+} from "./types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -31,6 +38,8 @@ export interface AnalyzeResponse {
   markers: Marker[];
   marker_warning?: string | null;
   file_processed: string;
+  source_type?: SourceType;
+  report_date?: string | null;
   timestamp?: string;
 }
 
@@ -118,6 +127,21 @@ export const api = {
     form.append("query", query);
     return request<AnalyzeResponse>("/analyze", { method: "POST", body: form });
   },
+  extractImages: (files: File[], query: string) => {
+    const form = new FormData();
+    files.forEach((file) => form.append("files", file));
+    form.append("query", query);
+    return request<ImageExtractionResponse>("/api/analyze/image", {
+      method: "POST",
+      body: form,
+    });
+  },
+  confirmImage: (payload: ConfirmImagePayload) =>
+    request<AnalyzeResponse>("/api/analyze/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
 };
 
 

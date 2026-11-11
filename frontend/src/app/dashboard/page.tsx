@@ -12,7 +12,7 @@ import ResultsSkeleton from "@/components/dashboard/ResultsSkeleton";
 import ContextualChatPanel from "@/components/analysis/ContextualChatPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
-import type { AnalysisResult, HistoryItem } from "@/lib/types";
+import type { AnalysisResult, HistoryItem, UploadStatus } from "@/lib/types";
 
 function toAnalysisResult(item: HistoryItem): AnalysisResult {
   const formattedDate = isNaN(new Date(item.timestamp).getTime())
@@ -27,6 +27,8 @@ function toAnalysisResult(item: HistoryItem): AnalysisResult {
     reportType: item.report_type,
     diagnosticCenter: item.diagnostic_center,
     markerWarning: item.marker_warning,
+    sourceType: item.source_type || "PDF",
+    reportDate: item.report_date ?? null,
     timestamp: item.timestamp,
     agents: item.agents || {
       medical: item.analysis,
@@ -50,7 +52,7 @@ function clearAnalysisParam() {
 export default function DashboardPage() {
   const { user } = useAuth();
   const [activeResult, setActiveResult] = useState<AnalysisResult | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<"empty" | "analyzing" | "ready" | "error">("empty");
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>("empty");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
@@ -95,7 +97,9 @@ export default function DashboardPage() {
   const markerWarning =
     activeResult?.markerWarning ||
     (activeResult?.markers.length === 1
-      ? "Only 1 marker could be read from this report. Results may be incomplete."
+      ? `Only 1 marker could be read from this ${
+          activeResult.sourceType === "Image" ? "image" : "report"
+        }. Results may be incomplete.`
       : null);
 
   return (

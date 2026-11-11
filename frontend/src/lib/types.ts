@@ -3,6 +3,43 @@ export interface User {
   email: string;
 }
 
+export type SourceType = "PDF" | "Image";
+
+export type UploadStatus =
+  | "empty"
+  | "extracting"
+  | "reviewing"
+  | "analyzing"
+  | "ready"
+  | "error";
+
+export interface ExtractedMarker {
+  marker: string;
+  value: string;
+  unit: string;
+  reference_range: string;
+  confidence: number;
+  plausibility_warning?: string | null;
+}
+
+export interface ImageExtractionResponse {
+  status: string;
+  lab_name?: string | null;
+  report_date?: string | null;
+  markers: ExtractedMarker[];
+  marker_warning?: string | null;
+  file_names: string[];
+  query?: string;
+}
+
+export interface ConfirmImagePayload {
+  markers: ExtractedMarker[];
+  lab_name?: string | null;
+  report_date?: string | null;
+  file_names: string[];
+  query: string;
+}
+
 export interface HistoryItem {
   analysis_id?: string;
   report_type?: string;
@@ -19,6 +56,8 @@ export interface HistoryItem {
     exercise: string;
   };
   markers?: Marker[];
+  source_type?: SourceType;
+  report_date?: string | null;
   timestamp: string;
 }
 
@@ -46,6 +85,8 @@ export interface AnalysisResult {
   reportType?: string;
   diagnosticCenter?: string;
   markerWarning?: string | null;
+  sourceType?: SourceType;
+  reportDate?: string | null;
   timestamp?: string;
   agents: {
     medical: string;
